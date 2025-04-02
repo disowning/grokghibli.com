@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 30% 98%;
+    --foreground: 210 29% 24%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 29% 24%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 29% 24%;
+    --primary: 200 18% 37%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 24 67% 62%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 210 29% 97%;
+    --muted-foreground: 210 29% 45%;
+    --accent: 40 91% 59%;
+    --accent-foreground: 210 29% 24%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 200 18% 88%;
+    --input: 200 18% 88%;
+    --ring: 200 18% 37%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-ghibli-background text-ghibli-dark;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl p-6 shadow-md;
+  }
+  
+  .btn-primary {
+    @apply bg-ghibli-primary text-white py-2 px-4 rounded-md hover:bg-ghibli-primary/90 transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-ghibli-secondary text-white py-2 px-4 rounded-md hover:bg-ghibli-secondary/90 transition-colors;
+  }
+  
+  .feature-icon {
+    @apply w-12 h-12 bg-ghibli-light rounded-full flex items-center justify-center text-ghibli-primary mb-4 mx-auto;
+  }
+} 
