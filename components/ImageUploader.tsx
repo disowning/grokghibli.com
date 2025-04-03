@@ -98,13 +98,13 @@ export default function ImageUploader() {
     setProgress(0);
   };
 
-  // 模拟示例图片
+  // 示例图片
   const sampleImages = [
-    'https://placehold.co/400x400/E6EFF2/4A6670?text=Portrait',
-    'https://placehold.co/400x400/E6EFF2/4A6670?text=Landscape',
-    'https://placehold.co/400x400/E6EFF2/4A6670?text=City',
-    'https://placehold.co/400x400/E6EFF2/4A6670?text=Pet',
-    'https://placehold.co/400x400/E6EFF2/4A6670?text=Building'
+    '/images/samples/landscape.webp',
+    '/images/samples/cityscape.webp',
+    '/images/samples/portrait.webp',
+    '/images/samples/et.webp',
+    '/images/samples/building.webp'
   ];
 
   return (
