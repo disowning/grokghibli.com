@@ -55,4 +55,43 @@
   .feature-icon {
     @apply w-12 h-12 bg-ghibli-light rounded-full flex items-center justify-center text-ghibli-primary mb-4 mx-auto;
   }
+  
+  .animated-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+  
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  
+  .title-decoration {
+    position: relative;
+  }
+  
+  .title-decoration::before,
+  .title-decoration::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 30px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--ghibli-primary), transparent);
+  }
+  
+  .title-decoration::before {
+    left: -40px;
+  }
+  
+  .title-decoration::after {
+    right: -40px;
+  }
 } 
