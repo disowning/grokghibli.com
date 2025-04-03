@@ -9,8 +9,11 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
+    formats: ['image/avif', 'image/webp'],
+    dangerouslyAllowSVG: true,
     unoptimized: true,
   },
+  distDir: 'build',
   output: 'standalone',
 }
 

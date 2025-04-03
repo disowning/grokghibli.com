@@ -23,6 +23,11 @@ export const metadata: Metadata = {
   },
   description: 'Transform your photos into Studio Ghibli style artwork using xAI Grok technology. Create magical Ghibli-inspired art with AI in seconds.',
   keywords: ['grok ghibli', 'ghibli ai', 'grok ai art', 'studio ghibli style', 'ai image generator', 'ghibli art generator', 'grok image transformer'],
+  icons: {
+    icon: '/favicon/icon.ico',
+    shortcut: '/favicon/icon.ico',
+    apple: '/favicon/icon.ico',
+  },
   openGraph: {
     title: 'Grok Ghibli - AI Photo to Studio Ghibli Art Transformer',
     description: 'Transform your photos into Studio Ghibli style artwork using xAI Grok technology',

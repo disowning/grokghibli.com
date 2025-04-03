@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF9A5A" />
+      <stop offset="50%" stop-color="#FF6B6B" />
+      <stop offset="100%" stop-color="#4ECDC4" />
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFEEA2" />
+      <stop offset="100%" stop-color="#FF9A5A" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="1024" height="1024" rx="192" fill="url(#gradient1)" />
+  
+  <g transform="translate(256, 256) scale(1.5)">
+    <!-- Light bulb base -->
+    <path d="M256 384c0 70.7-57.3 128-128 128S0 454.7 0 384s57.3-128 128-128 128 57.3 128 128z" 
+          fill="#FFEEA2" rx="16"/>
+    
+    <!-- Paper airplane body -->
+    <path d="M128 256L256 128 384 256 256 384 128 256z" 
+          fill="url(#gradient2)" rx="8"/>
+    
+    <!-- Light bulb filament -->
+    <path d="M128 256L256 128M256 128L384 256M256 384L384 256M128 256L256 384" 
+          stroke="#5D4037" stroke-width="8" stroke-linecap="round"/>
+    
+    <!-- Radiating glow lines -->
+    <g stroke="#FFFFFF50" stroke-width="4">
+      <line x1="256" y1="64" x2="256" y2="128"/>
+      <line x1="320" y1="96" x2="384" y2="128"/>
+      <line x1="384" y1="192" x2="384" y2="256"/>
+      <line x1="320" y1="288" x2="384" y2="320"/>
+      <line x1="256" y1="320" x2="256" y2="384"/>
+      <line x1="192" y1="288" x2="128" y2="320"/>
+      <line x1="128" y1="192" x2="128" y2="256"/>
+      <line x1="192" y1="96" x2="128" y2="128"/>
+    </g>
+  </g>
+</svg>
