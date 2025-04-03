@@ -2,7 +2,7 @@
 
 GrokGhibli是一个使用Next.js 14和人工智能技术将普通照片转换为Studio Ghibli风格艺术作品的Web应用程序。
 
-![GrokGhibli Preview](https://placehold.co/1200x630/4A6670/ffffff/png?text=GrokGhibli+Preview)
+![GrokGhibli Preview](/images/showcase/showcase-after.webp)
 
 ## 功能特点
 
@@ -72,19 +72,45 @@ npm start
 ```
 grokghibli/
 ├── app/                    # Next.js 14 App Router
-│   ├── api/                # API 路由
-│   ├── page.tsx            # 主页
-│   └── layout.tsx          # 根布局
-├── components/             # React 组件
-│   ├── ui/                 # UI组件库
-│   ├── Header.tsx          # 网站头部组件
-│   ├── ImageUploader.tsx   # 图片上传组件
-│   ├── GhibliFeatures.tsx  # 功能展示组件
-│   └── Pricing.tsx         # 价格组件
-├── lib/                    # 工具函数库
-├── public/                 # 静态资源
-└── types/                  # TypeScript类型定义
+│   ├── api/               # API 路由
+│   ├── blog/              # 博客页面
+│   ├── features/          # 特性页面
+│   ├── showcase/          # 展示页面
+│   ├── page.tsx           # 主页
+│   └── layout.tsx         # 根布局
+├── components/            # React 组件
+│   ├── ui/               # UI组件库
+│   ├── Header.tsx        # 网站头部组件
+│   ├── ImageUploader.tsx # 图片上传组件
+│   ├── GhibliFeatures.tsx# 功能展示组件
+│   └── Pricing.tsx       # 价格组件
+├── lib/                  # 工具函数库
+├── public/               # 静态资源
+│   └── images/          # 图片资源
+│       ├── showcase/    # 展示用的转换前后对比图
+│       └── samples/     # 示例图片
+│           ├── landscape.webp  # 风景示例
+│           ├── cityscape.webp  # 城市示例
+│           ├── portrait.webp   # 人物示例
+│           ├── et.webp        # 动物示例
+│           └── building.webp   # 建筑示例
+└── types/               # TypeScript类型定义
 ```
+
+## 图片资源说明
+
+项目包含两类图片：
+
+1. **展示图片** (`public/images/showcase/`)
+   - `showcase-before.webp` - 转换前的原始图片
+   - `showcase-after.webp` - 转换后的Ghibli风格图片
+
+2. **示例图片** (`public/images/samples/`)
+   - `landscape.webp` - 风景照片示例
+   - `cityscape.webp` - 城市景观示例
+   - `portrait.webp` - 人物照片示例
+   - `et.webp` - 动物照片示例
+   - `building.webp` - 建筑照片示例
 
 ## API集成
 
