@@ -13,7 +13,6 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     unoptimized: true,
   },
-  distDir: 'build',
   output: 'standalone',
 }
 
