@@ -18,69 +18,94 @@ type ShowcaseItem = {
 
 export default function ShowcasePage() {
   const showcaseItems: ShowcaseItem[] = [
+    // 风景类 (Landscapes)
     {
       id: 1,
-      title: "Ghibli Style Transformation",
-      description: "Experience the magic of Studio Ghibli's artistic style with our AI transformation.",
-      beforeImage: "/images/showcase/showcase-before.webp",
-      afterImage: "/images/showcase/showcase-after.webp",
+      title: "Enchanted Forest",
+      description: "A mystical forest scene inspired by Princess Mononoke's deep woodlands.",
+      beforeImage: "/images/showcase/forest-before.webp",
+      afterImage: "/images/showcase/forest-after.webp",
       category: "landscape"
     },
     {
       id: 2,
-      title: "Urban Scene",
-      description: "A busy city street reimagined in the style of Spirited Away.",
-      beforeImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Original+Urban",
-      afterImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Ghibli+Urban",
-      category: "cityscape"
+      title: "Seaside Dreams",
+      description: "A coastal view transformed in the style of Ponyo's magical ocean scenes.",
+      beforeImage: "/images/showcase/sea-before.webp",
+      afterImage: "/images/showcase/sea-after.webp",
+      category: "landscape"
     },
+
+    // 城市场景 (Urban)
     {
       id: 3,
-      title: "Portrait Magic",
-      description: "A portrait transformed with the whimsical character style of Howl's Moving Castle.",
-      beforeImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Original+Portrait",
-      afterImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Ghibli+Portrait",
-      category: "portrait"
+      title: "Night Market Magic",
+      description: "A bustling street market scene reminiscent of Spirited Away's magical world.",
+      beforeImage: "/images/showcase/market-before.webp",
+      afterImage: "/images/showcase/market-after.webp",
+      category: "cityscape"
     },
     {
       id: 4,
-      title: "Pet Companion",
-      description: "A pet photo reimagined as a magical Ghibli companion.",
-      beforeImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Original+Pet",
-      afterImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Ghibli+Pet",
-      category: "pet"
-    },
-    {
-      id: 5,
-      title: "Natural Wonder",
-      description: "A natural landscape transformed in the Princess Mononoke style.",
-      beforeImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Original+Nature",
-      afterImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Ghibli+Nature",
-      category: "landscape"
-    },
-    {
-      id: 6,
-      title: "Architecture Dreams",
-      description: "An architectural photo with the magical touch of Castle in the Sky.",
-      beforeImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Original+Architecture",
-      afterImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Ghibli+Architecture",
+      title: "City in the Sky",
+      description: "An urban landscape transformed with the floating city aesthetic of Castle in the Sky.",
+      beforeImage: "/images/showcase/aerial-before.webp",
+      afterImage: "/images/showcase/aerial-after.webp",
       category: "cityscape"
     },
+
+    // 人物肖像 (Portraits)
     {
-      id: 7,
-      title: "Group Portrait",
-      description: "A family photo transformed into a heartwarming Ghibli scene.",
-      beforeImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Original+Group",
-      afterImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Ghibli+Group",
+      id: 5,
+      title: "Garden Portrait",
+      description: "A portrait in a flower garden, styled after Howl's Moving Castle's romantic scenes.",
+      beforeImage: "/images/showcase/garden-before.webp",
+      afterImage: "/images/showcase/garden-after.webp",
       category: "portrait"
     },
     {
-      id: 8,
-      title: "Animal Friends",
-      description: "Wildlife transformed into the charming animal companions from Ghibli films.",
-      beforeImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Original+Animals",
-      afterImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Ghibli+Animals",
+      id: 6,
+      title: "Rainy Day Dreams",
+      description: "A thoughtful portrait transformed with the dreamy atmosphere of The Wind Rises.",
+      beforeImage: "/images/showcase/rain-before.webp",
+      afterImage: "/images/showcase/rain-after.webp",
+      category: "portrait"
+    },
+
+    // 动物 (Pets & Animals)
+    {
+      id: 7,
+      title: "Magical Pet",
+      description: "A beloved pet reimagined as a charming Ghibli companion creature.",
+      beforeImage: "/images/showcase/pet-before.webp",
+      afterImage: "/images/showcase/pet-after.webp",
       category: "pet"
+    },
+    {
+      id: 8,
+      title: "Forest Friends",
+      description: "Wildlife captured in the heartwarming style of My Neighbor Totoro.",
+      beforeImage: "/images/showcase/wildlife-before.webp",
+      afterImage: "/images/showcase/wildlife-after.webp",
+      category: "pet"
+    },
+
+    // 建筑 (Architecture - 也算在Urban类别下)
+    {
+      id: 9,
+      title: "Ancient Temple",
+      description: "A traditional temple transformed with the mystical essence of Spirited Away.",
+      beforeImage: "/images/showcase/temple-before.webp",
+      afterImage: "/images/showcase/temple-after.webp",
+      category: "cityscape"
+    },
+    {
+      id: 10,
+      title: "Modern Dreams",
+      description: "Contemporary architecture reimagined with Ghibli's unique blend of fantasy and reality.",
+      beforeImage: "/images/showcase/modern-before.webp",
+      afterImage: "/images/showcase/modern-after.webp",
+      category: "cityscape"
     }
   ]
 
