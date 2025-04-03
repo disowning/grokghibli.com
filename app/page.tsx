@@ -22,7 +22,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center max-w-6xl mx-auto">
           <div className="relative h-[400px] rounded-xl overflow-hidden shadow-lg">
             <Image 
-              src="https://placehold.co/600x400/4A6670/ffffff/png?text=Before" 
+              src="/images/showcase/showcase-before.webp"
               alt="Original Photo Example" 
               fill
               className="object-cover"
@@ -31,7 +31,7 @@ export default function Home() {
           </div>
           <div className="relative h-[400px] rounded-xl overflow-hidden shadow-lg">
             <Image 
-              src="https://placehold.co/600x400/4A6670/ffffff/png?text=After+Ghibli+Style" 
+              src="/images/showcase/showcase-after.webp"
               alt="Studio Ghibli Style Example" 
               fill
               className="object-cover"

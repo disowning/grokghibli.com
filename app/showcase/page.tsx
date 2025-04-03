@@ -20,10 +20,10 @@ export default function ShowcasePage() {
   const showcaseItems: ShowcaseItem[] = [
     {
       id: 1,
-      title: "Countryside Transformation",
-      description: "A serene countryside scene transformed into a Totoro-inspired landscape.",
-      beforeImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Original+Countryside",
-      afterImage: "https://placehold.co/800x600/E6EFF2/4A6670?text=Ghibli+Countryside",
+      title: "Ghibli Style Transformation",
+      description: "Experience the magic of Studio Ghibli's artistic style with our AI transformation.",
+      beforeImage: "/images/showcase/showcase-before.webp",
+      afterImage: "/images/showcase/showcase-after.webp",
       category: "landscape"
     },
     {
@@ -141,17 +141,25 @@ export default function ShowcasePage() {
             These amazing transformations were submitted by our users. Create your own and join our growing community!
           </p>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(id => (
-              <div key={id} className="relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow">
-                <Image
-                  src={`https://placehold.co/400x400/E6EFF2/4A6670?text=User+Creation+${id}`}
-                  alt={`User Creation ${id}`}
-                  fill
-                  className="object-cover hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-8">
+            <div className="relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow">
+              <Image
+                src="/images/showcase/showcase-before.webp"
+                alt="Original Photo"
+                fill
+                className="object-cover hover:scale-105 transition-transform duration-300"
+              />
+              <div className="absolute bottom-2 left-2 bg-white/80 px-2 py-1 text-sm font-medium rounded">Original Photo</div>
+            </div>
+            <div className="relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow">
+              <Image
+                src="/images/showcase/showcase-after.webp"
+                alt="Ghibli Style"
+                fill
+                className="object-cover hover:scale-105 transition-transform duration-300"
+              />
+              <div className="absolute bottom-2 right-2 bg-ghibli-primary text-white px-2 py-1 text-sm font-medium rounded">Ghibli Style</div>
+            </div>
           </div>
           
           <p className="mt-6 text-ghibli-primary">
