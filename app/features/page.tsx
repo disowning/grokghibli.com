@@ -4,8 +4,34 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Image from 'next/image'
 
 export const metadata = {
-  title: 'Features - GrokGhibli',
-  description: 'Explore the magical features of GrokGhibli that transform your photos into Ghibli art',
+  title: 'Grok Ghibli Features - Transform Photos Into Studio Ghibli Artwork',
+  description: 'Discover how Grok Ghibli uses advanced xAI technology to transform your photos into stunning Studio Ghibli style artwork. Features include multiple film styles like Spirited Away and Totoro, real-time processing, and high-quality output. Last updated: April 3, 2025.',
+  keywords: [
+    'grok ghibli features', 
+    'ghibli ai transformation', 
+    'studio ghibli photo filter', 
+    'totoro art style', 
+    'spirited away generator', 
+    'howls moving castle filter',
+    'ai art generator',
+    'ghibli animation style',
+    'xai grok technology',
+    '2025 ai art'
+  ],
+  openGraph: {
+    title: 'Grok Ghibli Features - Transform Photos Into Studio Ghibli Artwork',
+    description: 'Transform your photos into stunning Studio Ghibli style artwork with our advanced AI. Multiple film styles, real-time processing, and high-quality output. Updated April 3, 2025.',
+    type: 'website',
+    url: 'https://grokghibli.com/features',
+    images: [
+      {
+        url: 'https://grokghibli.com/images/og/features-og.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Grok Ghibli Features'
+      }
+    ]
+  }
 }
 
 export default function FeaturesPage() {
@@ -14,10 +40,10 @@ export default function FeaturesPage() {
       {/* Hero Banner */}
       <section className="text-center space-y-6">
         <h1 className="text-4xl md:text-5xl font-bold font-heading text-ghibli-dark">
-          GrokGhibli Features
+          Grok Ghibli Features
         </h1>
         <p className="text-xl text-ghibli-primary max-w-3xl mx-auto">
-          Explore the magical features that make our Ghibli AI Generator the perfect tool for anime and animation enthusiasts.
+          Powered by xAI's Grok technology, our AI brings the magic of Studio Ghibli to your photos with unmatched accuracy and style.
         </p>
       </section>
 
@@ -112,7 +138,7 @@ export default function FeaturesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                 <div>
                   <h3 className="text-2xl font-heading font-semibold mb-4">Benefits For You</h3>
-                  <p className="mb-4">Enjoy these advantages when using GrokGhibli:</p>
+                  <p className="mb-4">Enjoy these advantages when using Grok Ghibli:</p>
                   <ul className="space-y-2 mb-6">
                     <li className="flex items-center">
                       <span className="bg-ghibli-accent text-white p-1 rounded-full mr-2">✓</span>
@@ -155,7 +181,7 @@ export default function FeaturesPage() {
           Experience all these amazing features for yourself. Start creating your own Ghibli style artworks today!
         </p>
         <Button size="lg" className="text-lg px-8">
-          Try GrokGhibli Now
+          Try Grok Ghibli Now
         </Button>
       </section>
     </div>

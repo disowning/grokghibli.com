@@ -3,8 +3,34 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export const metadata = {
-  title: 'Showcase - GrokGhibli',
-  description: 'View amazing examples of photos transformed into Ghibli-style artwork by GrokGhibli',
+  title: 'Grok Ghibli Showcase - Before & After Photo Transformations',
+  description: 'Explore our 2025 gallery of stunning before-and-after transformations created with Grok Ghibli. See how our AI transforms ordinary photos into magical Studio Ghibli-style artwork across various categories. Last updated: April 3, 2025.',
+  keywords: [
+    'grok ghibli examples', 
+    'ghibli art transformations', 
+    'before after anime filter', 
+    'studio ghibli style generator results', 
+    'ai artwork showcase', 
+    'ghibli portrait transformations',
+    'landscape to anime art',
+    'cityscape ghibli style',
+    'pet ghibli transformation',
+    '2025 ai artwork'
+  ],
+  openGraph: {
+    title: 'Grok Ghibli Showcase - Before & After Photo Transformations 2025',
+    description: 'See how our AI transforms ordinary photos into magical Studio Ghibli-style artwork. Browse our gallery of stunning before-and-after transformations. Updated April 3, 2025.',
+    type: 'website',
+    url: 'https://grokghibli.com/showcase',
+    images: [
+      {
+        url: 'https://grokghibli.com/images/og/showcase-og.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Grok Ghibli Showcase Gallery'
+      }
+    ]
+  }
 }
 
 type ShowcaseItem = {

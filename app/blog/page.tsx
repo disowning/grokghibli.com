@@ -3,8 +3,32 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 export const metadata = {
-  title: 'Blog - GrokGhibli',
-  description: 'Read articles about Ghibli art, AI transformation techniques, and creative inspiration',
+  title: 'Grok Ghibli Blog - Studio Ghibli Art & AI Transformation Articles',
+  description: 'Explore insightful articles about Studio Ghibli art styles, AI transformation techniques, film analysis, and creative inspiration. Learn how Grok Ghibli transforms photos into Ghibli-style artwork.',
+  keywords: [
+    'grok ghibli blog', 
+    'studio ghibli art analysis', 
+    'ai photo transformation', 
+    'ghibli animation style', 
+    'totoro influence', 
+    'spirited away colors',
+    'ai art ethics',
+    'ghibli-inspired artwork'
+  ],
+  openGraph: {
+    title: 'Grok Ghibli Blog - Studio Ghibli Art & AI Transformation Articles',
+    description: 'Explore insightful articles about Studio Ghibli art styles, AI transformation techniques, film analysis, and creative inspiration.',
+    type: 'website',
+    url: 'https://grokghibli.com/blog',
+    images: [
+      {
+        url: 'https://grokghibli.com/images/og/blog-og.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Grok Ghibli Blog'
+      }
+    ]
+  }
 }
 
 type BlogPost = {
@@ -25,7 +49,7 @@ export default function BlogPage() {
       id: "ghibli-art-style",
       title: "The Magic Behind Studio Ghibli's Distinctive Art Style",
       excerpt: "Explore the techniques, color palettes, and artistic choices that make Studio Ghibli films instantly recognizable and emotionally powerful.",
-      date: "April 15, 2023",
+      date: "April 3, 2025",
       author: "Miyako H.",
       authorRole: "Art Director",
       readTime: "8 min read",
@@ -36,7 +60,7 @@ export default function BlogPage() {
       id: "ai-transformation-explained",
       title: "How AI Transforms Photos into Ghibli Artwork: The Technology Explained",
       excerpt: "A deep dive into the neural networks and algorithms that power GrokGhibli's transformation capabilities.",
-      date: "March 22, 2023",
+      date: "March 25, 2025",
       author: "Ravi P.",
       authorRole: "AI Engineer",
       readTime: "12 min read",
@@ -47,7 +71,7 @@ export default function BlogPage() {
       id: "totoro-influence",
       title: "My Neighbor Totoro: The Influence on Modern Animation",
       excerpt: "How this beloved classic continues to shape animation aesthetics and storytelling 35 years after its release.",
-      date: "February 10, 2023",
+      date: "February 18, 2025",
       author: "Emma T.",
       authorRole: "Animation Historian",
       readTime: "10 min read",
@@ -58,7 +82,7 @@ export default function BlogPage() {
       id: "creative-photo-ideas",
       title: "10 Creative Ways to Use Your Ghibli-Transformed Photos",
       excerpt: "From wall art to gifts, discover wonderful applications for your magical Ghibli-style transformations.",
-      date: "January 28, 2023",
+      date: "January 15, 2025",
       author: "Sophie K.",
       authorRole: "Creative Director",
       readTime: "7 min read",
@@ -69,7 +93,7 @@ export default function BlogPage() {
       id: "spirited-away-colors",
       title: "The Color Psychology of Spirited Away",
       excerpt: "A detailed analysis of how color is used to convey emotion and meaning in this Oscar-winning masterpiece.",
-      date: "December 12, 2022",
+      date: "December 10, 2024",
       author: "James L.",
       authorRole: "Color Specialist",
       readTime: "9 min read",
@@ -80,7 +104,7 @@ export default function BlogPage() {
       id: "ai-art-ethics",
       title: "The Ethics of AI Art: Respecting the Ghibli Legacy",
       excerpt: "How AI art generators like GrokGhibli can honor artistic traditions while creating new possibilities.",
-      date: "November 5, 2022",
+      date: "November 20, 2024",
       author: "Naomi R.",
       authorRole: "Ethics Researcher",
       readTime: "11 min read",

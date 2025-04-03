@@ -2,8 +2,34 @@ import Pricing from '@/components/Pricing'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export const metadata = {
-  title: 'Pricing - GrokGhibli',
-  description: 'Choose the perfect plan to transform your photos into beautiful Ghibli-style artwork',
+  title: 'Grok Ghibli Pricing - Transform Photos to Ghibli Art | Free & Premium Plans',
+  description: 'Explore Grok Ghibli\'s affordable pricing plans for 2025. Choose between Free, Totoro, and Spirited plans to transform your photos into beautiful Studio Ghibli-style artwork with our AI technology. Last updated: April 3, 2025.',
+  keywords: [
+    'grok ghibli pricing', 
+    'ghibli art generator cost', 
+    'ai transformation price', 
+    'studio ghibli filter subscription', 
+    'photo to anime pricing', 
+    'ghibli style converter cost',
+    'totoro plan',
+    'spirited plan',
+    'free ghibli art',
+    '2025 ai pricing'
+  ],
+  openGraph: {
+    title: 'Grok Ghibli Pricing - Transform Photos to Ghibli Art | 2025 Plans',
+    description: 'Explore our simple, transparent pricing plans for 2025. Choose the perfect option to transform your photos into Studio Ghibli-style artwork. Updated April 3, 2025.',
+    type: 'website',
+    url: 'https://grokghibli.com/pricing',
+    images: [
+      {
+        url: 'https://grokghibli.com/images/og/pricing-og.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Grok Ghibli Pricing Plans'
+      }
+    ]
+  }
 }
 
 export default function PricingPage() {

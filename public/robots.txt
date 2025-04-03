@@ -1,0 +1,12 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://grokghibli.com/sitemap.xml
+
+# Disallow API routes
+Disallow: /api/
+
+# Optimize crawl rate
+Crawl-delay: 1 

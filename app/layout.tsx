@@ -16,25 +16,35 @@ const playfairDisplay = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: 'GrokGhibli - Transform Photos into Studio Ghibli Art',
-  description: 'Transform your photos into beautiful Studio Ghibli inspired artwork using AI.',
-  keywords: 'Studio Ghibli, AI art generator, Ghibli style, anime art, AI transformation',
+  title: {
+    default: 'Grok Ghibli - AI Photo to Studio Ghibli Art Transformer',
+    template: '%s | Grok Ghibli'
+  },
+  description: 'Transform your photos into Studio Ghibli style artwork using xAI Grok technology. Create magical Ghibli-inspired art with AI in seconds.',
+  keywords: ['grok ghibli', 'ghibli ai', 'grok ai art', 'studio ghibli style', 'ai image generator', 'ghibli art generator', 'grok image transformer'],
   openGraph: {
-    title: 'GrokGhibli - Transform Photos into Studio Ghibli Art',
-    description: 'Transform your photos into beautiful Studio Ghibli inspired artwork using AI.',
+    title: 'Grok Ghibli - AI Photo to Studio Ghibli Art Transformer',
+    description: 'Transform your photos into Studio Ghibli style artwork using xAI Grok technology',
     url: 'https://grokghibli.com',
-    siteName: 'GrokGhibli',
+    siteName: 'Grok Ghibli',
     images: [
       {
-        url: '/og-image.jpg',
+        url: '/images/showcase/showcase-after.webp',
         width: 1200,
         height: 630,
-        alt: 'GrokGhibli - Transform Photos into Studio Ghibli Art',
-      },
+        alt: 'Grok Ghibli Art Example'
+      }
     ],
     locale: 'en_US',
     type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Grok Ghibli - AI Photo to Studio Ghibli Art Transformer',
+    description: 'Transform your photos into Studio Ghibli style artwork using xAI Grok technology',
+    images: ['/images/showcase/showcase-after.webp'],
+  },
+  metadataBase: new URL('https://grokghibli.com'),
 }
 
 export default function RootLayout({
@@ -52,7 +62,7 @@ export default function RootLayout({
         <footer className="bg-ghibli-light py-8">
           <div className="container mx-auto px-4 text-center">
             <p className="text-ghibli-dark">
-              &copy; {new Date().getFullYear()} GrokGhibli. All rights reserved.
+              &copy; {new Date().getFullYear()} Grok Ghibli. All rights reserved.
             </p>
           </div>
         </footer>

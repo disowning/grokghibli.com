@@ -25,6 +25,7 @@ export default function Header() {
             <NavLink href="/showcase">Showcase</NavLink>
             <NavLink href="/pricing">Pricing</NavLink>
             <NavLink href="/blog">Blog</NavLink>
+            <NavLink href="/contact">Contact</NavLink>
             <Button variant="secondary" className="ml-4">
               Try Now
             </Button>
@@ -57,6 +58,7 @@ export default function Header() {
             <MobileNavLink href="/showcase" onClick={() => setIsMenuOpen(false)}>Showcase</MobileNavLink>
             <MobileNavLink href="/pricing" onClick={() => setIsMenuOpen(false)}>Pricing</MobileNavLink>
             <MobileNavLink href="/blog" onClick={() => setIsMenuOpen(false)}>Blog</MobileNavLink>
+            <MobileNavLink href="/contact" onClick={() => setIsMenuOpen(false)}>Contact</MobileNavLink>
             <div className="pt-2">
               <Button variant="secondary" className="w-full">
                 Try Now

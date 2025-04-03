@@ -5,6 +5,37 @@ import GhibliFeatures from '@/components/GhibliFeatures'
 import Pricing from '@/components/Pricing'
 import { Button } from '@/components/ui/button'
 
+export const metadata = {
+  title: 'Grok Ghibli - Transform Photos into Studio Ghibli Artwork with AI',
+  description: 'Use Grok Ghibli to transform your photos into stunning Studio Ghibli style artwork in 2025. Powered by xAI\'s latest Grok technology, create magical Ghibli transformations in seconds. Last updated: April 3, 2025.',
+  keywords: [
+    'grok ghibli', 
+    'studio ghibli ai', 
+    'photo to ghibli converter', 
+    'ai art transformation', 
+    'anime style generator', 
+    'ghibli art maker',
+    'xai grok',
+    'totoro style photos',
+    'spirited away filter',
+    '2025 ai image generator'
+  ],
+  openGraph: {
+    title: 'Grok Ghibli - Transform Photos into Studio Ghibli Artwork with AI (2025)',
+    description: 'Transform ordinary photos into magical Studio Ghibli artwork using AI. Create stunning Ghibli-style images in seconds. Updated April 3, 2025.',
+    type: 'website',
+    url: 'https://grokghibli.com',
+    images: [
+      {
+        url: 'https://grokghibli.com/images/og/home-og.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Grok Ghibli AI'
+      }
+    ]
+  }
+}
+
 export default function Home() {
   return (
     <div className="space-y-16">
@@ -12,10 +43,13 @@ export default function Home() {
       <section className="py-12 md:py-20">
         <div className="text-center space-y-6 mb-12">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold font-heading text-ghibli-dark">
-            Ghibli AI Generator
+            Grok Ghibli AI
           </h1>
           <p className="text-xl md:text-2xl text-ghibli-primary max-w-3xl mx-auto">
-            Transform your photos into magical Studio Ghibli inspired artwork with our advanced AI.
+            Transform your photos into magical Studio Ghibli artwork using xAI's latest Grok technology.
+          </p>
+          <p className="text-lg text-ghibli-dark/80 max-w-2xl mx-auto">
+            Experience the power of AI to create stunning Ghibli-style transformations in seconds.
           </p>
         </div>
 
