@@ -8,12 +8,14 @@ export const maxDuration = 60; // 60秒超时
 // 存储进行中的任务的简单内存缓存
 // 注意：这在Serverless环境中只在函数实例生命周期内有效
 // 对于生产环境，应使用外部存储如Redis或数据库
-const processingTasks = new Map<string, {
+export const processingTasks = new Map<string, {
   status: 'processing' | 'completed' | 'failed',
   result?: ArrayBuffer,
+  resultImage?: ArrayBuffer,
   error?: string,
   startTime: number,
-  token: HuggingFaceToken
+  token: HuggingFaceToken,
+  progress?: number
 }>();
 
 export async function POST(request: NextRequest) {
@@ -114,10 +116,19 @@ async function checkTaskStatus(taskId: string) {
   // 如果任务仍在处理中
   if (task.status === 'processing') {
     const elapsedSeconds = Math.floor((Date.now() - task.startTime) / 1000);
+    const progress = Math.min(95, Math.floor(elapsedSeconds / 30 * 100)); // 估计进度，最多95%
+    
+    // 更新进度
+    processingTasks.set(taskId, {
+      ...task,
+      progress
+    });
+    
     return NextResponse.json({ 
       status: 'processing',
       message: 'Image is still being processed',
-      elapsedTime: elapsedSeconds
+      elapsedTime: elapsedSeconds,
+      progress
     });
   }
   
@@ -132,15 +143,18 @@ async function checkTaskStatus(taskId: string) {
   }
   
   // 如果任务完成
-  if (task.status === 'completed' && task.result) {
+  if (task.status === 'completed' && (task.result || task.resultImage)) {
     // 获取结果并清理任务数据
-    const result = task.result;
+    const result = task.resultImage || task.result;
     processingTasks.delete(taskId);
     
-    // 返回处理后的图像
+    // 返回处理后的图像，确保设置正确的Content-Type
     return new NextResponse(result, {
       headers: {
         'Content-Type': 'image/webp',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       },
     });
   }
@@ -200,7 +214,7 @@ async function processImageAsync(
     const result = await client.predict("/single_condition_generate_image", params);
 
     if (Array.isArray(result.data) && result.data.length > 0 && result.data[0].url) {
-      console.log(`[Task ${taskId}] Downloading generated image...`);
+      console.log(`[Task ${taskId}] Downloading generated image from URL:`, result.data[0].url);
       const imageUrl = result.data[0].url;
       
       const response = await fetch(imageUrl);
@@ -209,6 +223,12 @@ async function processImageAsync(
       }
 
       const imageData = await response.arrayBuffer();
+      console.log(`[Task ${taskId}] Successfully downloaded image data, size: ${imageData.byteLength} bytes`);
+      
+      // 如果图片数据为空或太小，可能有问题
+      if (!imageData || imageData.byteLength < 100) {
+        throw new Error(`Invalid image data received: ${imageData.byteLength} bytes`);
+      }
       
       // 记录 token 成功使用时间
       const elapsedSeconds = (Date.now() - processingTasks.get(taskId)!.startTime) / 1000;
@@ -220,11 +240,15 @@ async function processImageAsync(
       processingTasks.set(taskId, {
         status: 'completed',
         result: imageData,
+        resultImage: imageData,
         startTime: processingTasks.get(taskId)!.startTime,
         token
       });
       
+      console.log(`[Task ${taskId}] 任务状态已更新为已完成`);
+      
     } else {
+      console.log(`[Task ${taskId}] Invalid response format:`, result.data);
       throw new Error('No valid image URL found in the response');
     }
 

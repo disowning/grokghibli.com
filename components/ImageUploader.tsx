@@ -12,26 +12,27 @@ import { Download, Upload, RefreshCw, Wand2, ImageIcon } from 'lucide-react';
 // 添加示例图片数据
 const previewExamples = [
   {
-    before: '/images/samples/landscape.webp',
-    after: '/images/samples/landscape.webp',
+    src: '/images/samples/landscape.webp',
     title: 'Landscape'
   },
   {
-    before: '/images/samples/portrait.webp',
-    after: '/images/samples/portrait.webp',
+    src: '/images/samples/portrait.webp',
     title: 'Portrait'
   },
   {
-    before: '/images/samples/cityscape.webp',
-    after: '/images/samples/cityscape.webp',
+    src: '/images/samples/cityscape.webp',
     title: 'Cityscape'
   },
   {
-    before: '/images/samples/building.webp',
-    after: '/images/samples/building.webp',
+    src: '/images/samples/building.webp',
     title: 'Building'
   }
 ];
+
+// 添加日志记录的函数
+const logDebug = (message: string, data?: any) => {
+  console.log(`[Debug] ${message}`, data || '');
+};
 
 export default function ImageUploader() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export default function ImageUploader() {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [seed, setSeed] = useState<number>(42);
   const [prompt, setPrompt] = useState<string>("Ghibli Studio style, Charming hand-drawn anime-style illustration");
+  const [sampleImage, setSampleImage] = useState<string | null>(null);
   
   // Clear progress interval
   const clearProgressInterval = () => {
@@ -107,40 +109,68 @@ export default function ImageUploader() {
   });
 
   const handleGenerateImage = async () => {
-    if (!originalImageFile) return;
+    if (!originalImageFile && !sampleImage) {
+      setError('请先上传图片或选择示例图片');
+      return;
+    }
     
     try {
+      logDebug('开始生成图片');
       setError(null);
       setIsLoading(true);
-      startProgressSimulation();
+      setProgress(0);
       
       // 创建form data
       const formData = new FormData();
-      formData.append('action', 'submit');
-      formData.append('image', originalImageFile);
+      
+      // 添加图像
+      if (originalImageFile) {
+        formData.append('image', originalImageFile);
+      } else if (sampleImage) {
+        // 如果使用示例图片，先获取其blob
+        const response = await fetch(sampleImage);
+        const blob = await response.blob();
+        formData.append('image', blob);
+      }
+      
       formData.append('prompt', prompt);
       formData.append('height', '768');
       formData.append('width', '768');
       formData.append('seed', seed.toString());
       
-      // 发送初始请求
-      const submitResponse = await axios.post('/api/transform-ghibli', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
+      logDebug('发送初始请求', {
+        prompt,
+        height: 768,
+        width: 768,
+        seed
       });
       
+      // 使用fetch API发送请求
+      const response = await fetch('/api/transform-ghibli', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `请求失败 (${response.status})`);
+      }
+      
+      // 解析JSON响应
+      const data = await response.json();
+      logDebug('收到初始响应', data);
+      
       // 如果提交成功，开始轮询结果
-      if (submitResponse.data && submitResponse.data.taskId) {
-        const taskId = submitResponse.data.taskId;
+      if (data.taskId) {
+        const taskId = data.taskId;
+        logDebug(`获取任务ID: ${taskId}，开始轮询结果`);
         await pollForResult(taskId);
       } else {
-        throw new Error("Failed to start image processing");
+        throw new Error("服务器没有返回有效的任务ID");
       }
     } catch (err: any) {
-      clearProgressInterval();
-      setError(err.message || 'Error transforming image');
-      console.error('Error:', err);
+      logDebug('生成图片出错', err);
+      setError(err.message || '生成图片失败，请重试');
       setIsLoading(false);
     }
   };
@@ -148,10 +178,7 @@ export default function ImageUploader() {
   // 轮询结果的函数
   const pollForResult = async (taskId: string) => {
     try {
-      // 创建用于检查的form data
-      const checkFormData = new FormData();
-      checkFormData.append('action', 'check');
-      checkFormData.append('taskId', taskId);
+      logDebug(`开始轮询任务 ${taskId}`);
       
       // 初始轮询间隔(毫秒)
       let pollInterval = 2000;
@@ -163,41 +190,77 @@ export default function ImageUploader() {
       const checkStatus = async () => {
         if (pollCount >= maxPolls) {
           clearProgressInterval();
+          logDebug('轮询次数超过最大限制');
           setError("Processing took too long. Please try again.");
           setIsLoading(false);
           return;
         }
         
         pollCount++;
+        logDebug(`轮询次数: ${pollCount}`);
         
         try {
-          const response = await axios.post('/api/transform-ghibli', checkFormData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-            responseType: pollCount > 3 ? 'blob' : 'json', // 前几次期望json，之后期望blob
-          });
+          // 直接使用GET请求访问check/[taskId]端点
+          logDebug(`发送检查请求 #${pollCount} 到 /api/transform-ghibli/check/${taskId}`);
           
-          // 如果收到blob响应，说明图片处理完成
-          if (response.data instanceof Blob) {
+          const response = await fetch(`/api/transform-ghibli/check/${taskId}`);
+          const contentType = response.headers.get('content-type');
+          
+          logDebug(`响应类型: ${contentType}`);
+          
+          // 如果收到图片类型的响应，说明图片处理完成
+          if (contentType && contentType.includes('image')) {
+            logDebug('收到图片响应');
             clearProgressInterval();
             setProgress(100);
             
-            const transformedImageUrl = URL.createObjectURL(response.data);
+            // 获取图片数据
+            const imageBlob = await response.blob();
+            
+            logDebug('创建Blob', {
+              type: imageBlob.type,
+              size: imageBlob.size
+            });
+            
+            const transformedImageUrl = URL.createObjectURL(imageBlob);
+            logDebug("创建图片URL:", transformedImageUrl);
+            
+            // 确保URL创建后立即设置到状态
             setTransformedImage(transformedImageUrl);
             setIsLoading(false);
+            
+            // 验证图片URL
+            try {
+              const img = document.createElement('img');
+              img.onload = () => logDebug('图片加载成功', { width: img.width, height: img.height });
+              img.onerror = (e) => logDebug('图片加载失败', e);
+              img.src = transformedImageUrl;
+            } catch (imgErr) {
+              logDebug('验证图片URL时出错', imgErr);
+            }
+            
             return;
           }
           
           // 处理JSON响应
-          const status = response.data.status;
+          const data = await response.json();
+          logDebug('收到JSON响应', data);
+          
+          // 状态为404，任务不存在，可能是服务重启
+          if (response.status === 404) {
+            logDebug('任务未找到(404)，继续轮询');
+            setTimeout(checkStatus, pollInterval);
+            return;
+          }
+          
+          const status = data.status;
           
           if (status === 'processing') {
-            // 根据进度更新UI
-            const elapsedTime = response.data.elapsedTime || 0;
-            // 计算估计进度 (最多到95%)
-            const estimatedProgress = Math.min(95, Math.floor(elapsedTime / 60 * 100));
-            setProgress(estimatedProgress);
+            // 更新进度
+            const progress = data.progress || Math.min(95, Math.floor(pollCount / maxPolls * 100));
+            setProgress(progress);
+            
+            logDebug(`处理中，进度: ${progress}%，已用时间: ${data.elapsedTime || 0}秒`);
             
             // 继续轮询
             setTimeout(checkStatus, pollInterval);
@@ -205,28 +268,26 @@ export default function ImageUploader() {
             pollInterval = Math.min(pollInterval * 1.5, 5000);
           } else if (status === 'failed') {
             clearProgressInterval();
-            setError(response.data.error || "Failed to process image");
+            logDebug('处理失败', data.error);
+            setError(data.error || "Failed to process image");
             setIsLoading(false);
           } else {
             // 继续轮询
+            logDebug(`未知状态: ${status}，继续轮询`);
             setTimeout(checkStatus, pollInterval);
           }
         } catch (err: any) {
-          // 如果是404错误(任务不存在)，等待后重试
-          if (err.response && err.response.status === 404) {
-            setTimeout(checkStatus, pollInterval);
-            return;
-          }
-          
-          clearProgressInterval();
-          setError(err.message || "Error checking processing status");
-          setIsLoading(false);
+          logDebug('检查任务状态时出错', err);
+          // 出错后仍然继续轮询，除非达到最大次数
+          setTimeout(checkStatus, pollInterval);
         }
       };
       
       // 开始第一次检查
+      logDebug('延迟2秒后开始第一次检查');
       setTimeout(checkStatus, 2000);
     } catch (err: any) {
+      logDebug('轮询过程中出错', err);
       clearProgressInterval();
       setError(err.message || 'Error polling for results');
       setIsLoading(false);
@@ -234,7 +295,7 @@ export default function ImageUploader() {
   };
 
   const handleRegenerateImage = async () => {
-    if (!originalImageFile) return;
+    if (!originalImageFile && !sampleImage) return;
     setSeed(Math.floor(Math.random() * 1000));
     handleGenerateImage();
   };
@@ -249,8 +310,19 @@ export default function ImageUploader() {
     setOriginalImage(null);
     setOriginalImageFile(null);
     setTransformedImage(null);
+    setSampleImage(null);
     setError(null);
     setProgress(0);
+  };
+
+  // 处理选择示例图片
+  const handleSelectSample = (sampleSrc: string) => {
+    // 清除之前选择的图片
+    resetImages();
+    // 设置示例图片
+    setSampleImage(sampleSrc);
+    // 随机设置种子值
+    setSeed(Math.floor(Math.random() * 1000));
   };
 
   return (
@@ -301,39 +373,65 @@ export default function ImageUploader() {
           <div className="space-y-4">
             <div className="relative h-[400px] rounded-lg bg-gray-50">
               {transformedImage ? (
-                    <Image 
-                  src={transformedImage}
-                  alt="Transformed"
-                  fill
-                  className="object-contain rounded-lg"
-                />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  {/* 使用普通img标签作为备份 */}
+                  <img
+                    src={transformedImage}
+                    alt="Transformed"
+                    style={{ 
+                      maxWidth: '100%', 
+                      maxHeight: '100%', 
+                      objectFit: 'contain' 
+                    }}
+                    className="rounded-lg"
+                  />
+                </div>
               ) : isLoading ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                   <p className="mt-4 text-sm text-gray-500">Transforming... {progress}%</p>
-            </div>
-          ) : (
+                </div>
+              ) : sampleImage ? (
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <img
+                    src={sampleImage}
+                    alt="Selected Sample"
+                    style={{ 
+                      maxWidth: '100%', 
+                      maxHeight: '100%', 
+                      objectFit: 'contain' 
+                    }}
+                    className="rounded-lg"
+                  />
+                  <button 
+                    onClick={() => setSampleImage(null)}
+                    className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
                   {!originalImage ? (
                     <div className="w-full space-y-4">
                       <p className="text-sm text-gray-500 text-center mb-6">
-                        Example transformations
+                        示例图片 (点击选择)
                       </p>
                       <div className="grid grid-cols-2 gap-4">
                         {previewExamples.map((example, index) => (
-                          <div key={index} className="relative group cursor-pointer overflow-hidden rounded-lg">
+                          <div 
+                            key={index} 
+                            className="relative group cursor-pointer overflow-hidden rounded-lg"
+                            onClick={() => handleSelectSample(example.src)}
+                          >
                             <div className="relative aspect-[4/3]">
                               <Image
-                                src={example.before}
-                                alt={`Example ${example.title} Before`}
+                                src={example.src}
+                                alt={`Example ${example.title}`}
                                 fill
-                                className="object-cover transition-opacity duration-300 group-hover:opacity-0"
-                              />
-                      <Image 
-                                src={example.after}
-                                alt={`Example ${example.title} After`}
-                                fill
-                                className="object-cover absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                                className="object-cover transition-transform duration-300 group-hover:scale-110"
                               />
                             </div>
                             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
@@ -342,24 +440,21 @@ export default function ImageUploader() {
                           </div>
                         ))}
                       </div>
-                      <p className="text-xs text-gray-400 text-center mt-4">
-                        Hover over examples to see the transformation
-                      </p>
-                        </div>
+                    </div>
                   ) : (
                     <p className="text-sm text-gray-500">
-                      {error || "Click Generate to transform your image"}
+                      {error || "点击生成按钮将图片转换为吉卜力风格"}
                     </p>
                   )}
-                        </div>
-                      )}
-                    </div>
-                        </div>
-                      </div>
-                      
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
         {/* Action Buttons */}
         <div className="flex justify-center gap-4 mt-8">
-          {originalImage && !isLoading && (
+          {(originalImage || sampleImage) && !isLoading && (
             <>
               {!transformedImage ? (
                 <Button
@@ -368,19 +463,19 @@ export default function ImageUploader() {
                   className="bg-gradient-to-r from-purple-600 to-rose-500 hover:from-purple-700 hover:to-rose-600"
                 >
                   <Wand2 className="w-4 h-4 mr-2" />
-                  Generate
+                  生成吉卜力风格
                 </Button>
               ) : (
                 <>
-                        <Button
+                  <Button
                     onClick={handleRegenerateImage}
-                          variant="outline"
+                    variant="outline"
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Regenerate
+                    重新生成
                   </Button>
                   <Button
-                          onClick={() => {
+                    onClick={() => {
                       const link = document.createElement('a');
                       link.href = transformedImage;
                       link.download = 'ghibli-style.webp';
@@ -389,8 +484,8 @@ export default function ImageUploader() {
                     variant="default"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download
-                        </Button>
+                    下载
+                  </Button>
                 </>
               )}
             </>
