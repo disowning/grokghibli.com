@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@gradio/client';
 import { tokenManager, type HuggingFaceToken } from '@/lib/token-manager';
 
-// 设置较长的超时时间
-export const maxDuration = 300; // 5分钟超时
+// 设置最大超时时间（符合Vercel Hobby计划限制）
+export const maxDuration = 60; // 60秒超时
 
 export async function POST(request: NextRequest) {
   let startTime = Date.now();
