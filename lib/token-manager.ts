@@ -1,7 +1,7 @@
 /**
  * Token Manager for Hugging Face API
  * 
- * 管理多个 Hugging Face tokens，实现自动轮换和使用时间跟踪
+ * Manages multiple Hugging Face tokens, with automatic rotation and usage tracking
  */
 
 type HuggingFaceToken = `hf_${string}`;
@@ -11,6 +11,8 @@ interface TokenUsage {
   usageMinutes: number;
   lastUsed: Date;
   inUse: boolean;
+  quotaExceeded?: boolean; // Mark token whether it has reached GPU quota limit
+  lastQuotaCheck?: Date;   // Time of last check quota status
 }
 
 class TokenManager {
@@ -22,18 +24,18 @@ class TokenManager {
     this.tokens = tokenList.map(token => ({
       token,
       usageMinutes: 0,
-      lastUsed: new Date(0), // 初始值为 1970 年
+      lastUsed: new Date(0), // Initial value is 1970
       inUse: false
     }));
     
-    // 设置每天午夜自动重置
+    // Set automatic reset at midnight every day
     this.scheduleNextReset();
     
-    console.log(`TokenManager 已初始化，共加载 ${this.tokens.length} 个 token`);
+    console.log(`TokenManager initialized with ${this.tokens.length} tokens`);
   }
 
   /**
-   * 计算距离下一个午夜的毫秒数
+   * Calculate milliseconds until midnight
    */
   private getMillisecondsUntilMidnight(): number {
     const now = new Date();
@@ -43,65 +45,116 @@ class TokenManager {
   }
   
   /**
-   * 安排下一次午夜重置
+   * Schedule next midnight reset
    */
   private scheduleNextReset(): void {
-    // 清除之前的定时器
+    // Clear previous timer
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
     }
     
-    // 计算到下一个午夜的时间
+    // Calculate time until next midnight
     const msUntilMidnight = this.getMillisecondsUntilMidnight();
     
-    // 设置新的定时器
+    // Set new timer
     this.resetTimer = setTimeout(() => {
-      console.log('执行每日 Token 使用时间重置');
+      console.log('Performing daily token usage reset');
       this.resetDailyUsage();
-      // 安排下一天的重置
+      // Schedule next reset for the next day
       this.scheduleNextReset();
     }, msUntilMidnight);
     
-    console.log(`Token 使用时间将在 ${new Date(Date.now() + msUntilMidnight).toLocaleString()} 重置`);
+    console.log(`Token usage will be reset at ${new Date(Date.now() + msUntilMidnight).toLocaleString()}`);
+  }
+  
+  /**
+   * Sort tokens by usage
+   * - Unrestricted tokens first
+   * - Then by today's usage time
+   * - Finally by the longest time since last used
+   */
+  private sortTokensByUsage(): void {
+    this.tokens.sort((a, b) => {
+      // First sort by quota status (unrestricted first)
+      if (a.quotaExceeded && !b.quotaExceeded) return 1;
+      if (!a.quotaExceeded && b.quotaExceeded) return -1;
+      
+      // Then sort by usage within the same day
+      const aToday = this.isSameDay(a.lastUsed);
+      const bToday = this.isSameDay(b.lastUsed);
+      
+      if (aToday && !bToday) return 1; // a used today but b didn't, b comes first
+      if (!aToday && bToday) return -1; // b used today but a didn't, a comes first
+      if (aToday && bToday) return a.usageMinutes - b.usageMinutes; // Both used today, who used less comes first
+      
+      // Finally sort by last used time (longest time since last used comes first)
+      return a.lastUsed.getTime() - b.lastUsed.getTime();
+    });
+  }
+  
+  /**
+   * Helper function: Check if date is today
+   */
+  private isSameDay(date: Date): boolean {
+    const today = new Date();
+    return today.getDate() === date.getDate() &&
+           today.getMonth() === date.getMonth() &&
+           today.getFullYear() === date.getFullYear();
   }
 
   /**
-   * 获取一个可用的 token
+   * Get a usable token
+   * Use intelligent sorting to select the most suitable token
    */
   getToken(): HuggingFaceToken | null {
-    // 遍历所有 token 找到一个可用的
-    for (let i = 0; i < this.tokens.length; i++) {
-      const tokenIndex = (this.currentTokenIndex + i) % this.tokens.length;
-      const tokenData = this.tokens[tokenIndex];
-      
-      // 检查 token 是否在使用中
+    // First sort tokens
+    this.sortTokensByUsage();
+    
+    console.log('Attempting to get token, sorted token list:');
+    this.tokens.forEach((t, i) => {
+      console.log(`#${i}: ${t.token.substring(0, 10)}..., Usage: ${t.usageMinutes.toFixed(1)} minutes, Exceeded: ${t.quotaExceeded || false}, Last Used: ${t.lastUsed.toISOString()}`);
+    });
+    
+    // Select first usable token
+    for (const tokenData of this.tokens) {
+      // Skip tokens in use
       if (tokenData.inUse) {
+        console.log(`Token ${tokenData.token.substring(0, 10)}... in use, skipping`);
         continue;
       }
       
-      // 检查 token 是否已达到每日限制 (5分钟)
-      const today = new Date();
-      const lastUsedDate = tokenData.lastUsed;
-      const isSameDay = today.getDate() === lastUsedDate.getDate() &&
-                       today.getMonth() === lastUsedDate.getMonth() &&
-                       today.getFullYear() === lastUsedDate.getFullYear();
+      // Skip tokens known to have reached GPU quota limit
+      if (tokenData.quotaExceeded) {
+        // If marked as exceeded and more than 4 hours since last check, reset status again
+        const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+        if (!tokenData.lastQuotaCheck || tokenData.lastQuotaCheck < fourHoursAgo) {
+          console.log(`Token ${tokenData.token.substring(0, 10)}... exceeded status more than 4 hours, reset status`);
+          tokenData.quotaExceeded = false;
+        } else {
+          console.log(`Token ${tokenData.token.substring(0, 10)}... reached GPU quota limit, skipping`);
+          continue;
+        }
+      }
       
-      if (isSameDay && tokenData.usageMinutes >= 5) {
+      // Check if token has reached daily limit (5 minutes)
+      if (this.isSameDay(tokenData.lastUsed) && tokenData.usageMinutes >= 5) {
+        console.log(`Token ${tokenData.token.substring(0, 10)}... reached today's usage limit, skipping`);
         continue;
       }
       
-      // 找到可用 token
-      this.currentTokenIndex = tokenIndex;
+      // Find usable token
       tokenData.inUse = true;
+      console.log(`Selected Token ${tokenData.token.substring(0, 10)}...`);
       return tokenData.token;
     }
     
-    // 所有 token 都不可用
+    // All tokens are unusable
+    console.log('All Tokens are unusable');
     return null;
   }
 
   /**
-   * 开始记录 token 使用
+   * Start recording token usage
    */
   startUsingToken(token: HuggingFaceToken): void {
     const tokenData = this.tokens.find(t => t.token === token);
@@ -112,23 +165,23 @@ class TokenManager {
   }
 
   /**
-   * 标记 token 使用完成并记录使用时间
+   * Mark token usage completed and record usage time
    */
   finishUsingToken(token: HuggingFaceToken, usageSeconds: number): void {
     const tokenData = this.tokens.find(t => t.token === token);
     if (tokenData) {
       tokenData.inUse = false;
       
-      // 计算使用分钟数并累加（向上取整到最接近的0.1分钟）
+      // Calculate usage minutes and add (rounded up to nearest 0.1 minutes)
       const usageMinutes = Math.ceil(usageSeconds / 6) / 10;
       tokenData.usageMinutes += usageMinutes;
       
-      console.log(`Token ${token.slice(0, 10)}... 使用了 ${usageMinutes.toFixed(1)} 分钟，今日累计 ${tokenData.usageMinutes.toFixed(1)} 分钟`);
+      console.log(`Token ${token.slice(0, 10)}... used ${usageMinutes.toFixed(1)} minutes, today's total: ${tokenData.usageMinutes.toFixed(1)} minutes`);
     }
   }
 
   /**
-   * 标记 token 使用失败，释放使用中状态但不记录时间
+   * Mark token usage failed, release in use status but don't record time
    */
   releaseToken(token: HuggingFaceToken): void {
     const tokenData = this.tokens.find(t => t.token === token);
@@ -136,31 +189,42 @@ class TokenManager {
       tokenData.inUse = false;
     }
   }
+  
+  /**
+   * Mark token as reached GPU quota limit
+   */
+  markTokenQuotaExceeded(token: HuggingFaceToken): void {
+    const tokenData = this.tokens.find(t => t.token === token);
+    if (tokenData) {
+      console.log(`Marking Token ${token.slice(0, 10)}... as GPU quota exceeded`);
+      tokenData.quotaExceeded = true;
+      tokenData.lastQuotaCheck = new Date();
+      tokenData.inUse = false;
+    }
+  }
 
   /**
-   * 获取所有 token 的使用情况
+   * Get usage status of all tokens
    */
-  getTokensStatus(): { token: string, usageMinutes: number, available: boolean }[] {
-    const today = new Date();
-    
+  getTokensStatus(): { token: string, usageMinutes: number, available: boolean, quotaExceeded: boolean }[] {
     return this.tokens.map(tokenData => {
-      const lastUsedDate = tokenData.lastUsed;
-      const isSameDay = today.getDate() === lastUsedDate.getDate() &&
-                       today.getMonth() === lastUsedDate.getMonth() &&
-                       today.getFullYear() === lastUsedDate.getFullYear();
-      
-      const available = !(tokenData.inUse || (isSameDay && tokenData.usageMinutes >= 5));
+      const available = !(
+        tokenData.inUse || 
+        tokenData.quotaExceeded || 
+        (this.isSameDay(tokenData.lastUsed) && tokenData.usageMinutes >= 5)
+      );
       
       return {
         token: `${tokenData.token.slice(0, 10)}...`,
         usageMinutes: tokenData.usageMinutes,
-        available
+        available,
+        quotaExceeded: tokenData.quotaExceeded || false
       };
     });
   }
 
   /**
-   * 重置所有 token 的每日使用时间（通常在每天午夜调用）
+   * Reset daily usage time of all tokens (usually called at midnight every day)
    */
   resetDailyUsage(): void {
     const today = new Date();
@@ -176,31 +240,31 @@ class TokenManager {
       }
     });
     
-    console.log(`已重置 Token 使用时间，当前时间: ${today.toLocaleString()}`);
+    console.log(`Token usage reset, current time: ${today.toLocaleString()}`);
   }
 }
 
 /**
- * 从环境变量和默认列表加载 token
+ * Load tokens from environment variables and default list
  */
 function loadTokens(): HuggingFaceToken[] {
-  // 默认 token 列表（作为示例，并非真实token）
+  // Default token list (for example, not real tokens)
   const defaultTokens = [
     'hf_example_token_1',
     'hf_example_token_2',
     'hf_example_token_3'
   ] as HuggingFaceToken[];
   
-  // 尝试从环境变量获取 token
+  // Try to get tokens from environment variables
   const envTokens: HuggingFaceToken[] = [];
   
-  // 检查环境变量中的单个 token
+  // Check single token in environment variable
   const singleToken = process.env.HUGGING_FACE_TOKEN;
   if (singleToken && singleToken.startsWith('hf_')) {
     envTokens.push(singleToken as HuggingFaceToken);
   }
   
-  // 检查环境变量中的 token 列表
+  // Check token list in environment variable
   const tokenListStr = process.env.HUGGING_FACE_TOKENS;
   if (tokenListStr) {
     const tokenArray = tokenListStr.split(',').map(t => t.trim());
@@ -211,7 +275,7 @@ function loadTokens(): HuggingFaceToken[] {
     }
   }
   
-  // 检查按索引命名的单独 token 环境变量（HUGGING_FACE_TOKEN_1, HUGGING_FACE_TOKEN_2 等）
+  // Check separately named single token environment variables (HUGGING_FACE_TOKEN_1, HUGGING_FACE_TOKEN_2, etc.)
   for (let i = 1; i <= 20; i++) {
     const indexedToken = process.env[`HUGGING_FACE_TOKEN_${i}`];
     if (indexedToken && indexedToken.startsWith('hf_')) {
@@ -219,15 +283,15 @@ function loadTokens(): HuggingFaceToken[] {
     }
   }
   
-  // 如果从环境变量找到了 token，则使用它们，否则使用默认列表
-  // 注意：默认列表仅用于示例，实际使用时应该只使用环境变量中的token
+  // If tokens found from environment variables, use them, otherwise use default list
+  // Note: Default list is only for example, actual use should only use tokens from environment variables
   const finalTokens = envTokens.length > 0 ? envTokens : defaultTokens;
   
-  // 移除重复的 token
+  // Remove duplicate tokens
   return Array.from(new Set(finalTokens));
 }
 
-// 创建单例实例
+// Create singleton instance
 const tokenManager = new TokenManager(loadTokens());
 
 export { tokenManager, type HuggingFaceToken }; 

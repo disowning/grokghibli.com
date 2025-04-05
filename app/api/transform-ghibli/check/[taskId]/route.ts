@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processingTasks } from '../../route';
+import { getTaskStatus, getTaskResultImage, deleteTask } from '../../route';
 
 export async function GET(
   request: NextRequest,
@@ -9,22 +9,35 @@ export async function GET(
     const taskId = params.taskId;
     console.log(`[Check API] Checking task: ${taskId}`);
 
-    // 找到任务
-    const task = processingTasks.get(taskId);
+    // 获取任务状态
+    const task = getTaskStatus(taskId);
     if (!task) {
       console.log(`[Check API] Task not found: ${taskId}`);
       return NextResponse.json({ status: 'not_found' }, { status: 404 });
     }
 
-    // 任务已完成并有图片数据
-    if (task.status === 'completed' && task.resultImage) {
-      console.log(`[Check API] Task completed, returning image data. Size: ${task.resultImage.byteLength} bytes`);
+    // 任务已完成，读取图片数据
+    if (task.status === 'completed') {
+      console.log(`[Check API] Task completed, fetching image data for ${taskId}`);
       
-      // 从processingTasks中删除任务
-      processingTasks.delete(taskId);
+      // 获取结果图像
+      const imageData = getTaskResultImage(taskId);
+      
+      if (!imageData) {
+        console.log(`[Check API] No image data found for ${taskId}`);
+        return NextResponse.json({ 
+          status: 'error',
+          error: 'Image data not found' 
+        }, { status: 404 });
+      }
+      
+      console.log(`[Check API] Successfully got image for ${taskId}, returning image data`);
+      
+      // 删除任务数据
+      deleteTask(taskId);
       
       // 返回图片并设置正确的content-type
-      return new NextResponse(task.resultImage, {
+      return new NextResponse(imageData, {
         headers: {
           'Content-Type': 'image/webp',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -34,11 +47,22 @@ export async function GET(
       });
     }
 
+    // 任务失败
+    if (task.status === 'failed') {
+      console.log(`[Check API] Task failed for ${taskId}: ${task.error}`);
+      // 删除任务数据
+      deleteTask(taskId);
+      return NextResponse.json({ 
+        status: 'failed',
+        error: task.error || 'Unknown error occurred' 
+      }, { status: 500 });
+    }
+
     // 任务正在处理中，返回状态
     console.log(`[Check API] Task in progress: ${taskId}, status: ${task.status}, progress: ${task.progress}`);
     return NextResponse.json({
       status: task.status,
-      progress: task.progress,
+      progress: task.progress || 0,
       elapsedTime: Date.now() - task.startTime
     });
   } catch (error: any) {

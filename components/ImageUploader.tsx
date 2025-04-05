@@ -105,17 +105,17 @@ export default function ImageUploader() {
       'image/*': ['.jpeg', '.jpg', '.png', '.webp']
     },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 3 * 1024 * 1024, // 3MB
   });
 
   const handleGenerateImage = async () => {
     if (!originalImageFile && !sampleImage) {
-      setError('请先上传图片或选择示例图片');
+      setError('Please upload an image or select a sample first');
       return;
     }
     
     try {
-      logDebug('开始生成图片');
+      logDebug('Starting image generation');
       setError(null);
       setIsLoading(true);
       setProgress(0);
@@ -134,14 +134,14 @@ export default function ImageUploader() {
       }
       
       formData.append('prompt', prompt);
-      formData.append('height', '768');
-      formData.append('width', '768');
+      formData.append('height', '512');
+      formData.append('width', '512');
       formData.append('seed', seed.toString());
       
-      logDebug('发送初始请求', {
+      logDebug('Sending initial request', {
         prompt,
-        height: 768,
-        width: 768,
+        height: 512,
+        width: 512,
         seed
       });
       
@@ -166,11 +166,11 @@ export default function ImageUploader() {
         logDebug(`获取任务ID: ${taskId}，开始轮询结果`);
         await pollForResult(taskId);
       } else {
-        throw new Error("服务器没有返回有效的任务ID");
+        throw new Error("Server did not return a valid task ID");
       }
     } catch (err: any) {
-      logDebug('生成图片出错', err);
-      setError(err.message || '生成图片失败，请重试');
+      logDebug('Error generating image', err);
+      setError(err.message || 'Failed to generate image. Please try again.');
       setIsLoading(false);
     }
   };
@@ -178,7 +178,7 @@ export default function ImageUploader() {
   // 轮询结果的函数
   const pollForResult = async (taskId: string) => {
     try {
-      logDebug(`开始轮询任务 ${taskId}`);
+      logDebug(`Starting to poll task ${taskId}`);
       
       // 初始轮询间隔(毫秒)
       let pollInterval = 2000;
@@ -197,33 +197,33 @@ export default function ImageUploader() {
         }
         
         pollCount++;
-        logDebug(`轮询次数: ${pollCount}`);
+        logDebug(`Poll attempt: ${pollCount}`);
         
         try {
           // 直接使用GET请求访问check/[taskId]端点
-          logDebug(`发送检查请求 #${pollCount} 到 /api/transform-ghibli/check/${taskId}`);
+          logDebug(`Sending check request #${pollCount} to /api/transform-ghibli/check/${taskId}`);
           
           const response = await fetch(`/api/transform-ghibli/check/${taskId}`);
           const contentType = response.headers.get('content-type');
           
-          logDebug(`响应类型: ${contentType}`);
+          logDebug(`Response type: ${contentType}`);
           
           // 如果收到图片类型的响应，说明图片处理完成
           if (contentType && contentType.includes('image')) {
-            logDebug('收到图片响应');
+            logDebug('Received image response');
             clearProgressInterval();
             setProgress(100);
             
             // 获取图片数据
             const imageBlob = await response.blob();
             
-            logDebug('创建Blob', {
+            logDebug('Creating Blob', {
               type: imageBlob.type,
               size: imageBlob.size
             });
             
             const transformedImageUrl = URL.createObjectURL(imageBlob);
-            logDebug("创建图片URL:", transformedImageUrl);
+            logDebug("Created image URL:", transformedImageUrl);
             
             // 确保URL创建后立即设置到状态
             setTransformedImage(transformedImageUrl);
@@ -232,11 +232,11 @@ export default function ImageUploader() {
             // 验证图片URL
             try {
               const img = document.createElement('img');
-              img.onload = () => logDebug('图片加载成功', { width: img.width, height: img.height });
-              img.onerror = (e) => logDebug('图片加载失败', e);
+              img.onload = () => logDebug('Image loaded successfully', { width: img.width, height: img.height });
+              img.onerror = (e) => logDebug('Image failed to load', e);
               img.src = transformedImageUrl;
             } catch (imgErr) {
-              logDebug('验证图片URL时出错', imgErr);
+              logDebug('Error validating image URL', imgErr);
             }
             
             return;
@@ -248,7 +248,7 @@ export default function ImageUploader() {
           
           // 状态为404，任务不存在，可能是服务重启
           if (response.status === 404) {
-            logDebug('任务未找到(404)，继续轮询');
+            logDebug('Task not found (404), continuing polling');
             setTimeout(checkStatus, pollInterval);
             return;
           }
@@ -260,7 +260,7 @@ export default function ImageUploader() {
             const progress = data.progress || Math.min(95, Math.floor(pollCount / maxPolls * 100));
             setProgress(progress);
             
-            logDebug(`处理中，进度: ${progress}%，已用时间: ${data.elapsedTime || 0}秒`);
+            logDebug(`Processing, progress: ${progress}%, elapsed time: ${data.elapsedTime || 0} seconds`);
             
             // 继续轮询
             setTimeout(checkStatus, pollInterval);
@@ -268,26 +268,26 @@ export default function ImageUploader() {
             pollInterval = Math.min(pollInterval * 1.5, 5000);
           } else if (status === 'failed') {
             clearProgressInterval();
-            logDebug('处理失败', data.error);
+            logDebug('Processing failed', data.error);
             setError(data.error || "Failed to process image");
             setIsLoading(false);
           } else {
             // 继续轮询
-            logDebug(`未知状态: ${status}，继续轮询`);
+            logDebug(`Unknown status: ${status}, continuing polling`);
             setTimeout(checkStatus, pollInterval);
           }
         } catch (err: any) {
-          logDebug('检查任务状态时出错', err);
+          logDebug('Error checking task status', err);
           // 出错后仍然继续轮询，除非达到最大次数
           setTimeout(checkStatus, pollInterval);
         }
       };
       
       // 开始第一次检查
-      logDebug('延迟2秒后开始第一次检查');
+      logDebug('Starting first check after 2 second delay');
       setTimeout(checkStatus, 2000);
     } catch (err: any) {
-      logDebug('轮询过程中出错', err);
+      logDebug('Error during polling', err);
       clearProgressInterval();
       setError(err.message || 'Error polling for results');
       setIsLoading(false);
@@ -362,7 +362,7 @@ export default function ImageUploader() {
                     Drag & drop your photo here, or click to select
                   </p>
                   <p className="text-xs text-gray-400 mt-2">
-                    Supports JPG, PNG, WebP (max 10MB)
+                    Supports JPG, PNG, WebP (max 3MB)
                   </p>
                 </div>
               )}
@@ -417,7 +417,7 @@ export default function ImageUploader() {
                   {!originalImage ? (
                     <div className="w-full space-y-4">
                       <p className="text-sm text-gray-500 text-center mb-6">
-                        示例图片 (点击选择)
+                        Sample Images (click to select)
                       </p>
                       <div className="grid grid-cols-2 gap-4">
                         {previewExamples.map((example, index) => (
@@ -443,7 +443,7 @@ export default function ImageUploader() {
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500">
-                      {error || "点击生成按钮将图片转换为吉卜力风格"}
+                      {error || "Click Generate to transform your image into Ghibli style"}
                     </p>
                   )}
                 </div>
@@ -463,7 +463,7 @@ export default function ImageUploader() {
                   className="bg-gradient-to-r from-purple-600 to-rose-500 hover:from-purple-700 hover:to-rose-600"
                 >
                   <Wand2 className="w-4 h-4 mr-2" />
-                  生成吉卜力风格
+                  Generate Ghibli Style
                 </Button>
               ) : (
                 <>
@@ -472,7 +472,7 @@ export default function ImageUploader() {
                     variant="outline"
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    重新生成
+                    Regenerate
                   </Button>
                   <Button
                     onClick={() => {
@@ -484,7 +484,7 @@ export default function ImageUploader() {
                     variant="default"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    下载
+                    Download
                   </Button>
                 </>
               )}

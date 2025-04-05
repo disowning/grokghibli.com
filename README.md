@@ -1,226 +1,290 @@
 # Grok Ghibli
 
-Grok Ghibli is a web application that transforms your photos into Studio Ghibli-style artwork using xAI's latest Grok technology and Next.js 14. Last updated: April 3, 2025.
+Grok Ghibli is a web application that transforms your photos into Studio Ghibli-style artwork using AI technology and Next.js 14. The application provides a seamless, user-friendly experience for creating charming Ghibli-inspired transformations of your images.
 
 ![Grok Ghibli Preview](/images/showcase/showcase-after.webp)
 
 ## Features
 
-- **Grok-Powered AI**: Utilizes xAI's advanced Grok technology for accurate Ghibli-style transformations
+- **AI-Powered Transformation**: Leverages advanced AI models for accurate Ghibli-style transformations
+- **Async Processing System**: Handles image transformations in the background without timeouts
 - **Multiple Styles**: Choose from various iconic Studio Ghibli film styles
-- **Real-time Processing**: Watch your photos transform with live progress tracking
+- **Real-time Progress Tracking**: Monitor transformations with live progress updates
 - **High-Quality Output**: Generate high-resolution Ghibli-style artwork
 - **User-Friendly Interface**: Simple drag-and-drop photo upload
+- **Sample Images**: Try the transformation with built-in sample images
 - **Responsive Design**: Perfect experience on any device
 - **SEO Optimized**: Fully optimized for search engines with meta tags, sitemap, and robots.txt
 
 ## Technology Stack
 
 - **Frontend**: Next.js 14 (App Router)
+- **API Routes**: Next.js API routes with extended timeouts for long-running operations
 - **Styling**: Tailwind CSS
 - **UI Components**: Radix UI + shadcn/ui
 - **Server Components**: React Server Components for optimal performance
-- **AI Integration**: Connected to xAI's Grok model via API
+- **State Management**: React Hooks for client-side state
+- **AI Integration**: Connected to Hugging Face API via Gradio client
+- **File Storage**: Serverless-friendly temporary file storage for image processing
 
-## 本地开发
+## Local Development
 
-### 前提条件
+### Prerequisites
 
 - Node.js 18+ 
-- npm 或 yarn
+- npm or yarn
 
-### 安装步骤
+### Installation Steps
 
-1. 克隆仓库
+1. Clone the repository
    ```
    git clone https://github.com/yourusername/grokghibli.git
    cd grokghibli
    ```
 
-2. 安装依赖
+2. Install dependencies
    ```
    npm install
    ```
 
-3. 创建环境变量文件
+3. Create environment variables file
    ```
    cp .env.example .env.local
    ```
    
-4. 在`.env.local`文件中添加所需的API密钥
+4. Add required API keys to `.env.local` file
    ```
-   HUGGINGFACE_API_KEY=your_api_key_here
+   HUGGING_FACE_TOKEN=your_api_key_here
+   ```
+   
+   Or add multiple tokens for better reliability:
+   ```
+   HUGGING_FACE_TOKENS=hf_token1,hf_token2,hf_token3
    ```
 
-5. 启动开发服务器
+5. Start the development server
    ```
    npm run dev
    ```
 
-6. 在浏览器中打开 [http://localhost:3000](http://localhost:3000)
+6. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## 生产部署
+## Production Deployment
 
-构建优化的生产版本：
+Build an optimized production version:
 
 ```
 npm run build
 npm start
 ```
 
-## Token 管理系统
+### Deployment on Vercel
 
-GrokGhibli 使用了高级 Token 管理系统来处理 Hugging Face API 的调用：
+For the best performance, deploy on Vercel:
 
-### 特点
+1. Push your repository to GitHub
+2. Connect your GitHub repository to Vercel
+3. Add environment variables in the Vercel dashboard
+4. Deploy
 
-- **多 Token 轮换**：支持多个 API Token 自动轮换，提高系统稳定性
-- **使用时间追踪**：精确跟踪每个 Token 的使用时间（精确到 0.1 分钟）
-- **自动限制控制**：当 Token 达到每日使用限制（5分钟）时自动切换
-- **自动重置**：每天午夜自动重置使用时间统计
-- **状态监控**：提供专门 API 端点查看所有 Token 的使用情况
+## Advanced Token Management System
 
-### 配置 Token
+GrokGhibli uses a sophisticated token management system to handle Hugging Face API calls:
 
-有三种方式配置 Token：
+### Features
 
-1. **单个 Token**：
+- **Multi-Token Rotation**: Supports automatic rotation of multiple API tokens
+- **Intelligent Selection Algorithm**: Prioritizes tokens based on usage, quota limits, and time since last used
+- **Usage Time Tracking**: Precisely monitors each token's usage time (accurate to 0.1 minutes)
+- **Quota Limit Detection**: Automatically detects when a token reaches its GPU quota limit
+- **Automatic Limits**: Switches to alternative tokens when daily usage limits (5 minutes) are reached
+- **Daily Reset**: Automatically resets usage statistics at midnight
+- **Status Monitoring**: Provides API endpoints for viewing token usage status
+
+### Token Configuration
+
+Three ways to configure tokens:
+
+1. **Single Token**:
    ```
    HUGGING_FACE_TOKEN=hf_your_token_here
    ```
 
-2. **逗号分隔的 Token 列表**：
+2. **Comma-separated Token List**:
    ```
    HUGGING_FACE_TOKENS=hf_token1,hf_token2,hf_token3
    ```
 
-3. **索引形式的多个 Token**：
+3. **Indexed Multiple Tokens**:
    ```
    HUGGING_FACE_TOKEN_1=hf_token1
    HUGGING_FACE_TOKEN_2=hf_token2
    ```
 
-### 查看 Token 状态
+### Viewing Token Status
 
-访问以下 API 端点查看 Token 使用情况：
+Access the following API endpoint to view token usage:
 ```
 /api/token-status?secret=your_admin_secret
 ```
 
-需要在 `.env.local` 中设置 `ADMIN_SECRET` 环境变量来保护此端点。
+Set the `ADMIN_SECRET` environment variable in `.env.local` to protect this endpoint.
 
-## 项目结构
+## Asynchronous Image Processing
+
+GrokGhibli implements an advanced asynchronous image processing system:
+
+1. **Task Queue**: Images are processed in a background task queue
+2. **Status Tracking**: Each task has an ID and status for monitoring
+3. **Polling Mechanism**: Client polls for status until processing completes
+4. **Progress Updates**: Real-time progress updates during processing
+5. **Fallback Mechanism**: If all tokens are exhausted, returns original image
+6. **Serverless Compatible**: Uses temporary file storage suitable for serverless environments
+
+## Project Structure
 
 ```
 grokghibli/
 ├── app/                    # Next.js 14 App Router
-│   ├── api/               # API 路由
-│   │   ├── transform-ghibli/ # 图片转换 API
-│   │   └── token-status/     # Token 状态 API
-│   ├── blog/              # 博客页面
-│   ├── contact/           # 联系页面
-│   ├── features/          # 特性页面
-│   ├── showcase/          # 展示页面
-│   ├── page.tsx           # 主页
-│   └── layout.tsx         # 根布局
-├── components/            # React 组件
-│   ├── ui/               # UI组件库
-│   ├── Header.tsx        # 网站头部组件
-│   ├── ImageUploader.tsx # 图片上传组件
-│   ├── GhibliFeatures.tsx# 功能展示组件
-│   └── Pricing.tsx       # 价格组件
-├── lib/                  # 工具函数库
-│   └── token-manager.ts  # Token 管理系统
-├── public/               # 静态资源
-│   ├── robots.txt        # 搜索引擎爬虫指令文件
-│   ├── sitemap.xml       # 站点地图
-│   └── images/          # 图片资源
-│       ├── showcase/    # 展示用的转换前后对比图
-│       └── samples/     # 示例图片
-│           ├── landscape.webp  # 风景示例
-│           ├── cityscape.webp  # 城市示例
-│           ├── portrait.webp   # 人物示例
-│           ├── et.webp        # 动物示例
-│           └── building.webp   # 建筑示例
-└── types/               # TypeScript类型定义
+│   ├── api/               # API routes
+│   │   ├── transform-ghibli/     # Image transformation API
+│   │   │   ├── route.ts           # Main API endpoint
+│   │   │   └── check/[taskId]/    # Status checking endpoint
+│   │   └── token-status/         # Token status API
+│   ├── blog/              # Blog pages
+│   ├── contact/           # Contact page
+│   ├── features/          # Features page
+│   ├── showcase/          # Showcase page
+│   ├── page.tsx           # Homepage
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+│   ├── ui/               # UI component library
+│   ├── Header.tsx        # Website header component
+│   ├── ImageUploader.tsx # Image upload component
+│   ├── GhibliFeatures.tsx# Feature showcase component
+│   └── Pricing.tsx       # Pricing component
+├── lib/                  # Utility libraries
+│   └── token-manager.ts  # Token management system
+├── public/               # Static assets
+│   ├── robots.txt        # Search engine crawler instructions
+│   ├── sitemap.xml       # Site map
+│   └── images/          # Image assets
+│       ├── showcase/    # Before/after transformation examples
+│       └── samples/     # Sample images
+│           ├── landscape.webp  # Landscape sample
+│           ├── cityscape.webp  # Cityscape sample
+│           ├── portrait.webp   # Portrait sample
+│           ├── animal.webp     # Animal sample
+│           └── building.webp   # Building sample
+└── types/               # TypeScript type definitions
 ```
 
-## 图片资源说明
+## Image Resources
 
-项目包含两类图片：
+The project includes two types of images:
 
-1. **展示图片** (`public/images/showcase/`)
-   - `showcase-before.webp` - 转换前的原始图片
-   - `showcase-after.webp` - 转换后的Ghibli风格图片
+1. **Showcase Images** (`public/images/showcase/`)
+   - `showcase-before.webp` - Original image before transformation
+   - `showcase-after.webp` - Transformed image in Ghibli style
 
-2. **示例图片** (`public/images/samples/`)
-   - `landscape.webp` - 风景照片示例
-   - `cityscape.webp` - 城市景观示例
-   - `portrait.webp` - 人物照片示例
-   - `et.webp` - 动物照片示例
-   - `building.webp` - 建筑照片示例
+2. **Sample Images** (`public/images/samples/`)
+   - `landscape.webp` - Landscape photo sample
+   - `cityscape.webp` - City landscape sample
+   - `portrait.webp` - Portrait photo sample
+   - `animal.webp` - Animal photo sample
+   - `building.webp` - Building photo sample
 
-## API集成
+## API Integration
 
-GrokGhibli使用Hugging Face的AI模型进行图像转换：
+GrokGhibli uses Hugging Face's AI models for image transformation:
 
-1. 在[Hugging Face](https://huggingface.co/)创建一个账户
-2. 获取API Token
-3. 将其添加到`.env.local`文件中（使用上述的任意一种配置方式）
-4. 重启应用以加载新的环境变量
+1. Create an account on [Hugging Face](https://huggingface.co/)
+2. Obtain API Tokens (recommended to create multiple tokens)
+3. Add them to your `.env.local` file (using any of the configuration methods above)
+4. Restart the application to load the new environment variables
 
-### API端点
+### API Endpoints
 
-应用提供以下API端点：
+The application provides the following API endpoints:
 
-| 端点 | 方法 | 描述 |
+| Endpoint | Method | Description |
 |------|------|------|
-| `/api/transform-ghibli` | POST | 将图片转换为吉卜力风格 |
-| `/api/token-status` | GET | 查看Token使用状态（需要密钥） |
+| `/api/transform-ghibli` | POST | Submit an image for Ghibli-style transformation |
+| `/api/transform-ghibli/check/[taskId]` | GET | Check status of a processing task |
+| `/api/token-status` | GET | View token usage status (requires secret key) |
 
-## 性能优化
+## Performance Optimizations
 
-GrokGhibli 采用了以下性能优化措施：
+GrokGhibli includes the following performance optimizations:
 
-1. **服务器组件**：使用 Next.js 14 的 React Server Components 减少客户端 JavaScript
-2. **图像优化**：使用 Next.js 的内置图像优化功能提高加载速度
-3. **API 超时增强**：设置更长的 API 超时时间以处理复杂转换
-4. **自动 Token 轮换**：防止单个 Token 超出限制导致服务中断
-5. **响应式加载**：根据设备优化图像加载策略
+1. **Server Components**: Uses Next.js 14 React Server Components to reduce client-side JavaScript
+2. **Image Optimization**: Leverages Next.js built-in image optimization for faster loading
+3. **Asynchronous Processing**: Handles long-running transformations without timeouts
+4. **Intelligent Token Rotation**: Prevents service interruptions due to token limits
+5. **Progress Simulation**: Provides immediate feedback during processing
+6. **Reduced Image Dimensions**: Automatically scales large images to optimize processing time
+7. **Responsive Loading**: Optimizes image loading strategy based on device
+8. **File-based Task Storage**: Stores task data in temporary files for serverless compatibility
 
-## 故障排除
+## Troubleshooting
 
-常见问题及解决方法：
+Common issues and solutions:
 
-1. **API 连接失败**
-   - 检查网络连接
-   - 验证 Hugging Face Token 是否有效
-   - 确认 Hugging Face Space 正在运行
+1. **API Connection Failures**
+   - Check your network connection
+   - Verify that your Hugging Face Token is valid
+   - Confirm the Hugging Face Space is running
+   - Ensure you have not exceeded your daily quota limits
 
-2. **图像转换超时**
-   - 尝试使用较小尺寸的图像
-   - 检查服务器负载情况
-   - 稍后重试
+2. **Image Transformation Timeouts**
+   - Try using smaller images (the app limits uploads to 3MB)
+   - Use images with simpler content
+   - Check API server load and try again later
+   - Ensure your internet connection is stable
 
-3. **所有 Token 已用尽**
-   - 等待午夜自动重置
-   - 添加更多 Token 到环境变量中
+3. **All Tokens Exhausted**
+   - Wait for automatic midnight reset
+   - Add more tokens to your environment variables
+   - Check token status endpoint to identify which tokens are available
+   - Consider subscribing to Hugging Face Pro for higher limits
 
-## 贡献指南
+4. **Serverless Function Timeouts**
+   - The app uses an asynchronous processing model to avoid timeouts
+   - If you still encounter timeouts, try reducing image dimensions further
+   - Consider deploying to a platform with longer function timeouts
 
-欢迎贡献！请随时提交问题报告或拉取请求。
+5. **Image Not Displaying After Transformation**
+   - Check browser console for error messages
+   - Try a different browser or clear your cache
+   - Ensure your browser supports WebP images
+   - Try a different image format or size
 
-## 许可证
+## Contributing
 
-该项目基于MIT许可证。详情请参阅[LICENSE](LICENSE)文件。
+Contributions are welcome! Please feel free to submit issues or pull requests.
 
-## SEO 优化
+## License
 
-GrokGhibli已实施以下SEO优化措施（截至2025年4月更新）：
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-1. **元数据优化**：每个页面都有特定的标题、描述和关键词，优化了搜索引擎索引
-2. **结构化数据**：使用适当的HTML语义标记增强内容结构
-3. **响应式设计**：确保在所有设备上有良好的用户体验
-4. **站点地图**：`sitemap.xml`文件帮助搜索引擎发现和索引所有页面（2025年4月3日更新）
-5. **Robots.txt**：指导搜索引擎爬虫行为，优化爬取效率
-6. **页面速度优化**：使用Next.js的服务器组件和图像优化提高加载速度 
+## SEO Optimization
+
+GrokGhibli implements the following SEO optimizations:
+
+1. **Metadata Optimization**: Each page has specific titles, descriptions, and keywords optimized for search engines
+2. **Structured Data**: Uses appropriate HTML semantic markup to enhance content structure
+3. **Responsive Design**: Ensures good user experience on all devices
+4. **Site Map**: `sitemap.xml` file helps search engines discover and index all pages
+5. **Robots.txt**: Guides search engine crawler behavior for optimized crawling efficiency
+6. **Page Speed Optimization**: Uses Next.js server components and image optimization for faster loading
+
+## Future Enhancements
+
+Planned future enhancements include:
+
+1. **Additional Style Options**: More Ghibli style variations
+2. **Batch Processing**: Transform multiple images at once
+3. **User Accounts**: Save transformation history
+4. **Style Customization**: Adjust transformation parameters
+5. **Video Processing**: Transform short video clips
+6. **Social Sharing**: Direct sharing to social media platforms 
