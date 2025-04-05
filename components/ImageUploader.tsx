@@ -5,47 +5,44 @@ import Image from 'next/image';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Download, Upload, RefreshCw, Image as ImageIcon, Zap, ArrowUpFromLine, RefreshCcw } from 'lucide-react';
+import { Download, Upload, RefreshCw, Wand2, ImageIcon } from 'lucide-react';
 
-type StyleOption = {
-  id: string;
-  name: string;
-  description: string;
-};
-
-type ImageSize = {
-  width: number;
-  height: number;
-};
+// 添加示例图片数据
+const previewExamples = [
+  {
+    before: '/images/samples/landscape.webp',
+    after: '/images/samples/landscape.webp',
+    title: 'Landscape'
+  },
+  {
+    before: '/images/samples/portrait.webp',
+    after: '/images/samples/portrait.webp',
+    title: 'Portrait'
+  },
+  {
+    before: '/images/samples/cityscape.webp',
+    after: '/images/samples/cityscape.webp',
+    title: 'Cityscape'
+  },
+  {
+    before: '/images/samples/building.webp',
+    after: '/images/samples/building.webp',
+    title: 'Building'
+  }
+];
 
 export default function ImageUploader() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
   const [transformedImage, setTransformedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [seed, setSeed] = useState<string>('42');
-  const [imageSize, setImageSize] = useState<ImageSize>({ width: 768, height: 768 });
-
-  // Style options
-  const styleOptions: StyleOption[] = [
-    { id: 'totoro', name: 'Totoro', description: 'Peaceful, natural countryside style' },
-    { id: 'spirited', name: 'Spirited Away', description: 'Mysterious, dreamlike fantasy world' },
-    { id: 'howl', name: 'Howl\'s Moving Castle', description: 'Elegant, magical steampunk style' },
-    { id: 'mononoke', name: 'Princess Mononoke', description: 'Natural, mystical forest style' },
-    { id: 'ponyo', name: 'Ponyo', description: 'Bright, vibrant ocean style' },
-  ];
+  const [seed, setSeed] = useState<number>(42);
+  const [prompt, setPrompt] = useState<string>("Ghibli Studio style, Charming hand-drawn anime-style illustration");
   
   // Clear progress interval
   const clearProgressInterval = () => {
@@ -89,39 +86,16 @@ export default function ImageUploader() {
     if (!file) return;
 
     try {
-      setError(null);
-      setIsLoading(true);
-      startProgressSimulation();
-      
-      // Show original image
       const originalImageUrl = URL.createObjectURL(file);
       setOriginalImage(originalImageUrl);
-      
-      // Create FormData
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('seed', seed);
-      formData.append('width', imageSize.width.toString());
-      formData.append('height', imageSize.height.toString());
-      
-      // Simulate response - remove in production and use actual API
-      setTimeout(() => {
-        clearProgressInterval();
-        setProgress(100);
-        
-        // Simulate transformation - use API response in production
-        const transformedImageUrl = originalImageUrl;
-        setTransformedImage(transformedImageUrl);
-        setIsLoading(false);
-      }, 3000 + Math.random() * 1000);
-      
+      setOriginalImageFile(file);
+      setTransformedImage(null); // Reset transformed image when new image is uploaded
+      setError(null);
     } catch (err: any) {
-      clearProgressInterval();
-      setError(err.message || 'Error transforming image');
+      setError(err.message || 'Error processing image');
       console.error('Error:', err);
-      setIsLoading(false);
     }
-  }, [seed, imageSize]);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -132,6 +106,54 @@ export default function ImageUploader() {
     maxSize: 10 * 1024 * 1024, // 10MB
   });
 
+  const handleGenerateImage = async () => {
+    if (!originalImageFile) return;
+    
+    try {
+      setError(null);
+      setIsLoading(true);
+      startProgressSimulation();
+      
+      const formData = new FormData();
+      formData.append('image', originalImageFile);
+      formData.append('prompt', prompt);
+      formData.append('height', '768');
+      formData.append('width', '768');
+      formData.append('seed', seed.toString());
+      
+      const response = await axios.post('/api/transform-ghibli', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        responseType: 'blob',
+      });
+      
+      clearProgressInterval();
+      setProgress(100);
+
+      if (response.data) {
+        const transformedBlob = response.data;
+        const transformedImageUrl = URL.createObjectURL(transformedBlob);
+        setTransformedImage(transformedImageUrl);
+      } else {
+        throw new Error("Failed to transform image");
+      }
+      
+      setIsLoading(false);
+    } catch (err: any) {
+      clearProgressInterval();
+      setError(err.message || 'Error transforming image');
+      console.error('Error:', err);
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerateImage = async () => {
+    if (!originalImageFile) return;
+    setSeed(Math.floor(Math.random() * 1000));
+    handleGenerateImage();
+  };
+
   const resetImages = () => {
     if (originalImage && originalImage.startsWith('blob:')) {
       URL.revokeObjectURL(originalImage);
@@ -140,375 +162,156 @@ export default function ImageUploader() {
       URL.revokeObjectURL(transformedImage);
     }
     setOriginalImage(null);
+    setOriginalImageFile(null);
     setTransformedImage(null);
     setError(null);
     setProgress(0);
   };
 
-  // Sample images
-  const sampleImages = [
-    '/images/samples/landscape.webp',
-    '/images/samples/cityscape.webp',
-    '/images/samples/portrait.webp',
-    '/images/samples/et.webp',
-    '/images/samples/building.webp'
-  ];
-
-  // Handle sample image selection
-  const handleSampleImageSelect = (img: string) => {
-    setOriginalImage(img);
-    setError(null);
-    setProgress(0);
-    
-    // Simulate conversion
-    setIsLoading(true);
-    startProgressSimulation();
-    setTimeout(() => {
-      clearProgressInterval();
-      setProgress(100);
-      setTransformedImage(img);
-      setIsLoading(false);
-    }, 3000);
-  };
-
-  const handleSizeChange = (dimension: 'width' | 'height', value: string) => {
-    const numValue = parseInt(value);
-    if (!isNaN(numValue) && numValue >= 256 && numValue <= 1024) {
-      setImageSize(prev => ({
-        ...prev,
-        [dimension]: numValue
-      }));
-    }
-  };
-
   return (
-    <div className="space-y-8">
-      {!originalImage ? (
-        <>
-          {/* Upload Area */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="w-full max-w-6xl mx-auto px-4 py-8">
+      <Card className="p-6 shadow-lg bg-white/50 backdrop-blur-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Left side - Original Image */}
+          <div className="space-y-4">
             <div 
               {...getRootProps()} 
-              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                isDragActive ? 'border-ghibli-primary bg-ghibli-light/50 scale-105' : 'border-gray-300 hover:border-ghibli-primary hover:shadow-lg'
-              }`}
+              className={`
+                relative h-[400px] border-2 border-dashed rounded-lg
+                flex flex-col items-center justify-center
+                cursor-pointer transition-colors
+                ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary'}
+              `}
             >
               <input {...getInputProps()} />
-              <div className="flex flex-col items-center justify-center space-y-3">
-                <div className="w-14 h-14 bg-ghibli-light rounded-full flex items-center justify-center">
-                  <ArrowUpFromLine className="w-6 h-6 text-ghibli-primary" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold font-heading">{isDragActive ? 'Drop image here' : 'Upload your photo'}</h3>
-                  <p className="text-gray-500 mb-3">or drag and drop image here</p>
-                  <Button className="bg-ghibli-primary hover:bg-ghibli-primary/90">
-                    Choose File
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-400 mt-2">Supports: JPG, JPEG, PNG, WEBP (max 10MB)</p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-1">Width</h4>
-                  <Input 
-                    type="number" 
-                    min={256} 
-                    max={1024} 
-                    value={imageSize.width}
-                    onChange={(e) => handleSizeChange('width', e.target.value)}
+              {originalImage ? (
+                <div className="relative w-full h-full group">
+                  <Image
+                    src={originalImage}
+                    alt="Original"
+                    fill
+                    className="object-contain rounded-lg"
                   />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <p className="text-white text-sm">
+                      Click or drop to change image
+                    </p>
                 </div>
-                
-                <div>
-                  <h4 className="font-medium mb-1">Height</h4>
-                  <Input 
-                    type="number" 
-                    min={256} 
-                    max={1024} 
-                    value={imageSize.height}
-                    onChange={(e) => handleSizeChange('height', e.target.value)}
-                  />
                 </div>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-1">Seed</h4>
-                <div className="flex gap-2">
-                  <Input 
-                    type="text" 
-                    placeholder="Enter seed value" 
-                    value={seed}
-                    onChange={(e) => setSeed(e.target.value)}
-                    className="flex-grow"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => setSeed(Math.floor(Math.random() * 1000).toString())}
-                    title="Generate random seed"
-                  >
-                    <RefreshCcw className="h-4 w-4" />
-                  </Button>
+              ) : (
+                <div className="text-center p-4">
+                  <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-sm text-gray-500">
+                    Drag & drop your photo here, or click to select
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Supports JPG, PNG, WebP (max 10MB)
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Using the same seed produces consistent results</p>
-              </div>
-              
-              <div className="bg-ghibli-light/30 p-3 rounded-lg">
-                <h4 className="font-medium mb-1">Tips</h4>
-                <ul className="text-sm space-y-1 text-gray-700">
-                  <li>• Landscape photos work best</li>
-                  <li>• Use higher resolution images for better results</li>
-                  <li>• Different styles work best for different types of photos</li>
-                </ul>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Sample Images */}
-          <div className="mt-8">
-            <h3 className="text-center font-medium mb-6 font-heading text-xl">Try with these sample images</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {sampleImages.map((img, i) => (
-                <button 
-                  key={i}
-                  className="aspect-square rounded-lg overflow-hidden border hover:border-ghibli-primary hover:shadow-lg focus:outline-none focus:border-ghibli-primary transition-all hover:scale-105"
-                  onClick={() => handleSampleImageSelect(img)}
-                >
-                  <div className="relative w-full h-full">
+          {/* Right side - Transformed Image */}
+          <div className="space-y-4">
+            <div className="relative h-[400px] rounded-lg bg-gray-50">
+              {transformedImage ? (
                     <Image 
-                      src={img}
-                      alt={`Sample image ${i+1}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="space-y-8">
-          {/* Image Display */}
-          {error ? (
-            <div className="text-center bg-red-50 p-8 rounded-xl border border-red-200 space-y-4">
-              <p className="text-red-500 font-medium">{error}</p>
-              <Button 
-                onClick={resetImages}
-                className="bg-red-500 hover:bg-red-600"
-              >
-                Try Again
-              </Button>
+                  src={transformedImage}
+                  alt="Transformed"
+                  fill
+                  className="object-contain rounded-lg"
+                />
+              ) : isLoading ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                  <p className="mt-4 text-sm text-gray-500">Transforming... {progress}%</p>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* Control Panel */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-center text-lg">Size & Seed</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <h4 className="text-sm font-medium mb-1">Width</h4>
-                        <Input 
-                          type="number" 
-                          min={256} 
-                          max={1024} 
-                          value={imageSize.width}
-                          onChange={(e) => handleSizeChange('width', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium mb-1">Height</h4>
-                        <Input 
-                          type="number" 
-                          min={256} 
-                          max={1024} 
-                          value={imageSize.height}
-                          onChange={(e) => handleSizeChange('height', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-sm font-medium mb-1">Seed</h4>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="text" 
-                          value={seed}
-                          onChange={(e) => setSeed(e.target.value)}
-                          className="flex-grow"
-                        />
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => setSeed(Math.floor(Math.random() * 1000).toString())}
-                          title="Generate random seed"
-                        >
-                          <RefreshCcw className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-center text-lg">Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col space-y-2">
-                      <Button 
-                        variant="outline"
-                        className="w-full"
-                        onClick={resetImages}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload New Image
-                      </Button>
-                      
-                      {transformedImage && !isLoading && (
-                        <a 
-                          href={transformedImage} 
-                          download="ghibli-transformed.jpg"
-                          className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium bg-ghibli-primary text-white hover:bg-ghibli-primary/90 h-10 px-4 py-2"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download Image
-                        </a>
-                      )}
-                      
-                      {transformedImage && !isLoading && (
-                        <Button
-                          className="w-full bg-ghibli-secondary hover:bg-ghibli-secondary/90"
-                          onClick={() => {
-                            setTransformedImage(null);
-                            setIsLoading(true);
-                            startProgressSimulation();
-                            setTimeout(() => {
-                              clearProgressInterval();
-                              setProgress(100);
-                              setTransformedImage(originalImage);
-                              setIsLoading(false);
-                            }, 2000);
-                          }}
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Regenerate
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              {/* Image Comparison */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="overflow-hidden">
-                  <CardHeader className="pb-2 bg-ghibli-light/20">
-                    <CardTitle className="text-center text-xl flex items-center justify-center">
-                      <ImageIcon className="w-5 h-5 mr-2 text-ghibli-dark/70" />
-                      Original Photo
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="relative h-64">
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  {!originalImage ? (
+                    <div className="w-full space-y-4">
+                      <p className="text-sm text-gray-500 text-center mb-6">
+                        Example transformations
+                      </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        {previewExamples.map((example, index) => (
+                          <div key={index} className="relative group cursor-pointer overflow-hidden rounded-lg">
+                            <div className="relative aspect-[4/3]">
+                              <Image
+                                src={example.before}
+                                alt={`Example ${example.title} Before`}
+                                fill
+                                className="object-cover transition-opacity duration-300 group-hover:opacity-0"
+                              />
                       <Image 
-                        src={originalImage} 
-                        alt="Original image" 
-                        fill 
-                        className="object-contain"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="overflow-hidden">
-                  <CardHeader className="pb-2 bg-ghibli-light/20">
-                    <CardTitle className="text-center text-xl flex items-center justify-center">
-                      <Zap className="w-5 h-5 mr-2 text-ghibli-primary" />
-                      Ghibli Style
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="relative h-64">
-                      {isLoading ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-ghibli-light/10">
-                          <div className="w-full max-w-xs space-y-4 p-4">
-                            <div className="w-full bg-gray-200 rounded-full h-3">
-                              <div 
-                                className="bg-ghibli-primary h-3 rounded-full transition-all duration-300 ease-in-out" 
-                                style={{ width: `${progress}%` }} 
+                                src={example.after}
+                                alt={`Example ${example.title} After`}
+                                fill
+                                className="object-cover absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                               />
                             </div>
-                            <div className="text-center space-y-1">
-                              <p className="font-medium text-ghibli-primary">
-                                {progress < 100 ? `Transforming... ${progress}%` : 'Finalizing...'}
-                              </p>
-                              <p className="text-xs text-gray-500">Applying "{styleOptions.find(s => s.id === 'totoro')?.name}" style</p>
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                              <p className="text-white text-xs text-center">{example.title}</p>
                             </div>
                           </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-400 text-center mt-4">
+                        Hover over examples to see the transformation
+                      </p>
                         </div>
-                      ) : transformedImage ? (
-                        <Image 
-                          src={transformedImage} 
-                          alt="Transformed image" 
-                          fill 
-                          className="object-contain"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-ghibli-light/10">
-                          <p className="text-gray-400">Preparing transformation...</p>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      {error || "Click Generate to transform your image"}
+                    </p>
+                  )}
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              {/* Additional Info */}
-              {transformedImage && !isLoading && (
-                <Card className="bg-ghibli-light/20">
-                  <CardContent className="py-4">
-                    <div className="text-center space-y-3">
-                      <h3 className="text-lg font-medium">Image generation details</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        <div className="bg-white rounded-lg p-2 shadow-sm">
-                          <h4 className="text-sm text-gray-500">Dimensions</h4>
-                          <p className="font-medium">{imageSize.width} × {imageSize.height}</p>
-                        </div>
-                        <div className="bg-white rounded-lg p-2 shadow-sm">
-                          <h4 className="text-sm text-gray-500">Seed</h4>
-                          <p className="font-medium">{seed}</p>
                         </div>
                       </div>
                       
-                      <div className="pt-2">
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-4 mt-8">
+          {originalImage && !isLoading && (
+            <>
+              {!transformedImage ? (
+                <Button
+                  onClick={handleGenerateImage}
+                  variant="default"
+                  className="bg-gradient-to-r from-purple-600 to-rose-500 hover:from-purple-700 hover:to-rose-600"
+                >
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Generate
+                </Button>
+              ) : (
+                <>
                         <Button
+                    onClick={handleRegenerateImage}
                           variant="outline"
-                          className="mx-auto"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Regenerate
+                  </Button>
+                  <Button
                           onClick={() => {
-                            navigator.clipboard.writeText(
-                              `Generated with Grok Ghibli using dimensions: ${imageSize.width}×${imageSize.height}, seed: ${seed}`
-                            );
-                          }}
-                        >
-                          Copy Generation Settings
+                      const link = document.createElement('a');
+                      link.href = transformedImage;
+                      link.download = 'ghibli-style.webp';
+                      link.click();
+                    }}
+                    variant="default"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
                         </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                </>
               )}
-            </div>
+            </>
           )}
         </div>
-      )}
+      </Card>
     </div>
   );
 } 

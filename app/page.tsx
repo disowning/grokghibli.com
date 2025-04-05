@@ -76,7 +76,7 @@ export default function Home() {
       </section>
 
       {/* Transform Section */}
-      <section className="bg-white py-16 rounded-xl shadow-lg">
+      <section>
         <div className="container mx-auto px-4">
           <div className="relative text-center mb-10">
             <h2 className="text-3xl md:text-4xl font-heading font-bold inline-block relative">
@@ -85,12 +85,6 @@ export default function Home() {
               </span>
               <div className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-ghibli-primary to-transparent"></div>
             </h2>
-            <div className="absolute -left-8 top-1/2 -translate-y-1/2 transform rotate-90 hidden md:block">
-              <div className="w-5 h-5 rounded-full bg-ghibli-light border-2 border-ghibli-primary"></div>
-            </div>
-            <div className="absolute -right-8 top-1/2 -translate-y-1/2 transform -rotate-90 hidden md:block">
-              <div className="w-5 h-5 rounded-full bg-ghibli-light border-2 border-ghibli-primary"></div>
-            </div>
           </div>
           <ImageUploader />
         </div>

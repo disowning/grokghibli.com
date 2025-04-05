@@ -29,6 +29,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@gradio/client": "^1.14.1",
     "@shadcn/ui": "^0.0.4",
     "@types/node": "^20.10.4",
     "@types/react": "^18.2.42",

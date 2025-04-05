@@ -68,12 +68,55 @@ npm run build
 npm start
 ```
 
+## Token 管理系统
+
+GrokGhibli 使用了高级 Token 管理系统来处理 Hugging Face API 的调用：
+
+### 特点
+
+- **多 Token 轮换**：支持多个 API Token 自动轮换，提高系统稳定性
+- **使用时间追踪**：精确跟踪每个 Token 的使用时间（精确到 0.1 分钟）
+- **自动限制控制**：当 Token 达到每日使用限制（5分钟）时自动切换
+- **自动重置**：每天午夜自动重置使用时间统计
+- **状态监控**：提供专门 API 端点查看所有 Token 的使用情况
+
+### 配置 Token
+
+有三种方式配置 Token：
+
+1. **单个 Token**：
+   ```
+   HUGGING_FACE_TOKEN=hf_your_token_here
+   ```
+
+2. **逗号分隔的 Token 列表**：
+   ```
+   HUGGING_FACE_TOKENS=hf_token1,hf_token2,hf_token3
+   ```
+
+3. **索引形式的多个 Token**：
+   ```
+   HUGGING_FACE_TOKEN_1=hf_token1
+   HUGGING_FACE_TOKEN_2=hf_token2
+   ```
+
+### 查看 Token 状态
+
+访问以下 API 端点查看 Token 使用情况：
+```
+/api/token-status?secret=your_admin_secret
+```
+
+需要在 `.env.local` 中设置 `ADMIN_SECRET` 环境变量来保护此端点。
+
 ## 项目结构
 
 ```
 grokghibli/
 ├── app/                    # Next.js 14 App Router
 │   ├── api/               # API 路由
+│   │   ├── transform-ghibli/ # 图片转换 API
+│   │   └── token-status/     # Token 状态 API
 │   ├── blog/              # 博客页面
 │   ├── contact/           # 联系页面
 │   ├── features/          # 特性页面
@@ -87,6 +130,7 @@ grokghibli/
 │   ├── GhibliFeatures.tsx# 功能展示组件
 │   └── Pricing.tsx       # 价格组件
 ├── lib/                  # 工具函数库
+│   └── token-manager.ts  # Token 管理系统
 ├── public/               # 静态资源
 │   ├── robots.txt        # 搜索引擎爬虫指令文件
 │   ├── sitemap.xml       # 站点地图
@@ -118,11 +162,49 @@ grokghibli/
 
 ## API集成
 
-GrokGhibli使用Hugging Face的AI模型进行图像转换。要使用此功能，您需要：
+GrokGhibli使用Hugging Face的AI模型进行图像转换：
 
 1. 在[Hugging Face](https://huggingface.co/)创建一个账户
-2. 获取API密钥
-3. 将其添加到`.env.local`文件中
+2. 获取API Token
+3. 将其添加到`.env.local`文件中（使用上述的任意一种配置方式）
+4. 重启应用以加载新的环境变量
+
+### API端点
+
+应用提供以下API端点：
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/api/transform-ghibli` | POST | 将图片转换为吉卜力风格 |
+| `/api/token-status` | GET | 查看Token使用状态（需要密钥） |
+
+## 性能优化
+
+GrokGhibli 采用了以下性能优化措施：
+
+1. **服务器组件**：使用 Next.js 14 的 React Server Components 减少客户端 JavaScript
+2. **图像优化**：使用 Next.js 的内置图像优化功能提高加载速度
+3. **API 超时增强**：设置更长的 API 超时时间以处理复杂转换
+4. **自动 Token 轮换**：防止单个 Token 超出限制导致服务中断
+5. **响应式加载**：根据设备优化图像加载策略
+
+## 故障排除
+
+常见问题及解决方法：
+
+1. **API 连接失败**
+   - 检查网络连接
+   - 验证 Hugging Face Token 是否有效
+   - 确认 Hugging Face Space 正在运行
+
+2. **图像转换超时**
+   - 尝试使用较小尺寸的图像
+   - 检查服务器负载情况
+   - 稍后重试
+
+3. **所有 Token 已用尽**
+   - 等待午夜自动重置
+   - 添加更多 Token 到环境变量中
 
 ## 贡献指南
 
