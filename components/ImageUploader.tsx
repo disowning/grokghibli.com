@@ -114,36 +114,121 @@ export default function ImageUploader() {
       setIsLoading(true);
       startProgressSimulation();
       
+      // 创建form data
       const formData = new FormData();
+      formData.append('action', 'submit');
       formData.append('image', originalImageFile);
       formData.append('prompt', prompt);
       formData.append('height', '768');
       formData.append('width', '768');
       formData.append('seed', seed.toString());
       
-      const response = await axios.post('/api/transform-ghibli', formData, {
+      // 发送初始请求
+      const submitResponse = await axios.post('/api/transform-ghibli', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-        },
-        responseType: 'blob',
+        }
       });
       
-      clearProgressInterval();
-      setProgress(100);
-
-      if (response.data) {
-        const transformedBlob = response.data;
-        const transformedImageUrl = URL.createObjectURL(transformedBlob);
-        setTransformedImage(transformedImageUrl);
+      // 如果提交成功，开始轮询结果
+      if (submitResponse.data && submitResponse.data.taskId) {
+        const taskId = submitResponse.data.taskId;
+        await pollForResult(taskId);
       } else {
-        throw new Error("Failed to transform image");
+        throw new Error("Failed to start image processing");
       }
-      
-      setIsLoading(false);
     } catch (err: any) {
       clearProgressInterval();
       setError(err.message || 'Error transforming image');
       console.error('Error:', err);
+      setIsLoading(false);
+    }
+  };
+
+  // 轮询结果的函数
+  const pollForResult = async (taskId: string) => {
+    try {
+      // 创建用于检查的form data
+      const checkFormData = new FormData();
+      checkFormData.append('action', 'check');
+      checkFormData.append('taskId', taskId);
+      
+      // 初始轮询间隔(毫秒)
+      let pollInterval = 2000;
+      // 最大轮询次数
+      const maxPolls = 30; // 大约1分钟
+      let pollCount = 0;
+      
+      // 开始轮询
+      const checkStatus = async () => {
+        if (pollCount >= maxPolls) {
+          clearProgressInterval();
+          setError("Processing took too long. Please try again.");
+          setIsLoading(false);
+          return;
+        }
+        
+        pollCount++;
+        
+        try {
+          const response = await axios.post('/api/transform-ghibli', checkFormData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+            responseType: pollCount > 3 ? 'blob' : 'json', // 前几次期望json，之后期望blob
+          });
+          
+          // 如果收到blob响应，说明图片处理完成
+          if (response.data instanceof Blob) {
+            clearProgressInterval();
+            setProgress(100);
+            
+            const transformedImageUrl = URL.createObjectURL(response.data);
+            setTransformedImage(transformedImageUrl);
+            setIsLoading(false);
+            return;
+          }
+          
+          // 处理JSON响应
+          const status = response.data.status;
+          
+          if (status === 'processing') {
+            // 根据进度更新UI
+            const elapsedTime = response.data.elapsedTime || 0;
+            // 计算估计进度 (最多到95%)
+            const estimatedProgress = Math.min(95, Math.floor(elapsedTime / 60 * 100));
+            setProgress(estimatedProgress);
+            
+            // 继续轮询
+            setTimeout(checkStatus, pollInterval);
+            // 逐渐增加轮询间隔
+            pollInterval = Math.min(pollInterval * 1.5, 5000);
+          } else if (status === 'failed') {
+            clearProgressInterval();
+            setError(response.data.error || "Failed to process image");
+            setIsLoading(false);
+          } else {
+            // 继续轮询
+            setTimeout(checkStatus, pollInterval);
+          }
+        } catch (err: any) {
+          // 如果是404错误(任务不存在)，等待后重试
+          if (err.response && err.response.status === 404) {
+            setTimeout(checkStatus, pollInterval);
+            return;
+          }
+          
+          clearProgressInterval();
+          setError(err.message || "Error checking processing status");
+          setIsLoading(false);
+        }
+      };
+      
+      // 开始第一次检查
+      setTimeout(checkStatus, 2000);
+    } catch (err: any) {
+      clearProgressInterval();
+      setError(err.message || 'Error polling for results');
       setIsLoading(false);
     }
   };

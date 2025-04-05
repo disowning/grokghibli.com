@@ -5,12 +5,43 @@ import { tokenManager, type HuggingFaceToken } from '@/lib/token-manager';
 // 设置最大超时时间（符合Vercel Hobby计划限制）
 export const maxDuration = 60; // 60秒超时
 
+// 存储进行中的任务的简单内存缓存
+// 注意：这在Serverless环境中只在函数实例生命周期内有效
+// 对于生产环境，应使用外部存储如Redis或数据库
+const processingTasks = new Map<string, {
+  status: 'processing' | 'completed' | 'failed',
+  result?: ArrayBuffer,
+  error?: string,
+  startTime: number,
+  token: HuggingFaceToken
+}>();
+
 export async function POST(request: NextRequest) {
-  let startTime = Date.now();
+  const formData = await request.formData();
+  const action = formData.get('action') as string || 'submit';
+  
+  // 处理提交请求
+  if (action === 'submit') {
+    return handleSubmission(formData);
+  }
+  
+  // 处理状态检查请求
+  if (action === 'check') {
+    const taskId = formData.get('taskId') as string;
+    if (!taskId) {
+      return NextResponse.json({ error: 'No task ID provided' }, { status: 400 });
+    }
+    return checkTaskStatus(taskId);
+  }
+  
+  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+}
+
+// 处理图像提交
+async function handleSubmission(formData: FormData) {
   let usedToken: HuggingFaceToken | null = null;
   
   try {
-    const formData = await request.formData();
     const imageFile = formData.get('image') as File;
     const prompt = formData.get('prompt') as string || "Ghibli Studio style, colorful landscape";
     const height = Number(formData.get('height')) || 512;
@@ -24,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 从 Token 管理器获取一个可用的 token
+    // 从 Token 管理器获取可用token
     usedToken = tokenManager.getToken();
     
     if (!usedToken) {
@@ -35,19 +66,113 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 开始记录 token 使用
+    // 创建任务ID
+    const taskId = generateTaskId();
+    
+    // 记录任务开始
+    processingTasks.set(taskId, {
+      status: 'processing',
+      startTime: Date.now(),
+      token: usedToken
+    });
+    
+    // 记录 token 使用开始
     tokenManager.startUsingToken(usedToken);
+    
+    // 在后台异步处理图像
+    processImageAsync(taskId, imageFile, prompt, height, width, seed, usedToken);
+    
+    // 立即返回任务ID
+    return NextResponse.json({ 
+      taskId, 
+      message: 'Image processing started',
+      estimatedTime: '30-60 seconds'
+    });
+    
+  } catch (error: any) {
+    console.error('Error starting image processing:', error);
+    
+    if (usedToken) {
+      tokenManager.releaseToken(usedToken);
+    }
+    
+    return NextResponse.json(
+      { error: error.message || 'Failed to start image processing' },
+      { status: 500 }
+    );
+  }
+}
 
+// 检查任务状态
+async function checkTaskStatus(taskId: string) {
+  const task = processingTasks.get(taskId);
+  
+  if (!task) {
+    return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+  }
+  
+  // 如果任务仍在处理中
+  if (task.status === 'processing') {
+    const elapsedSeconds = Math.floor((Date.now() - task.startTime) / 1000);
+    return NextResponse.json({ 
+      status: 'processing',
+      message: 'Image is still being processed',
+      elapsedTime: elapsedSeconds
+    });
+  }
+  
+  // 如果任务失败
+  if (task.status === 'failed') {
+    // 清理任务数据
+    processingTasks.delete(taskId);
+    return NextResponse.json({ 
+      status: 'failed',
+      error: task.error || 'Unknown error occurred'
+    }, { status: 500 });
+  }
+  
+  // 如果任务完成
+  if (task.status === 'completed' && task.result) {
+    // 获取结果并清理任务数据
+    const result = task.result;
+    processingTasks.delete(taskId);
+    
+    // 返回处理后的图像
+    return new NextResponse(result, {
+      headers: {
+        'Content-Type': 'image/webp',
+      },
+    });
+  }
+  
+  // 这种情况不应该发生
+  return NextResponse.json({ 
+    status: 'unknown',
+    error: 'Invalid task state'
+  }, { status: 500 });
+}
+
+// 异步处理图像（在后台运行）
+async function processImageAsync(
+  taskId: string, 
+  imageFile: File, 
+  prompt: string, 
+  height: number, 
+  width: number, 
+  seed: number,
+  token: HuggingFaceToken
+) {
+  try {
     // 连接到Gradio客户端
     const spaceUrl = "https://jamesliu1217-easycontrol-ghibli.hf.space/";
-
-    console.log('Connecting to Gradio API...', { 
+    
+    console.log(`[Task ${taskId}] Connecting to Gradio API...`, { 
       spaceUrl,
-      tokenPrefix: usedToken.substring(0, 10) + '...'
+      tokenPrefix: token.substring(0, 10) + '...'
     });
     
     const client = await Client.connect(spaceUrl, {
-      hf_token: usedToken
+      hf_token: token
     });
 
     // 准备图片数据
@@ -64,7 +189,7 @@ export async function POST(request: NextRequest) {
       control_type: "Ghibli"
     };
 
-    console.log('Sending request to generate image...', {
+    console.log(`[Task ${taskId}] Sending request to generate image...`, {
       prompt,
       height,
       width,
@@ -75,7 +200,7 @@ export async function POST(request: NextRequest) {
     const result = await client.predict("/single_condition_generate_image", params);
 
     if (Array.isArray(result.data) && result.data.length > 0 && result.data[0].url) {
-      console.log('Downloading generated image...');
+      console.log(`[Task ${taskId}] Downloading generated image...`);
       const imageUrl = result.data[0].url;
       
       const response = await fetch(imageUrl);
@@ -86,39 +211,47 @@ export async function POST(request: NextRequest) {
       const imageData = await response.arrayBuffer();
       
       // 记录 token 成功使用时间
-      const elapsedSeconds = (Date.now() - startTime) / 1000;
-      tokenManager.finishUsingToken(usedToken, elapsedSeconds);
+      const elapsedSeconds = (Date.now() - processingTasks.get(taskId)!.startTime) / 1000;
+      tokenManager.finishUsingToken(token, elapsedSeconds);
       
-      console.log(`图片处理完成，耗时 ${elapsedSeconds.toFixed(1)} 秒`);
+      console.log(`[Task ${taskId}] 图片处理完成，耗时 ${elapsedSeconds.toFixed(1)} 秒`);
       
-      return new NextResponse(imageData, {
-        headers: {
-          'Content-Type': 'image/webp',
-        },
+      // 更新任务状态为已完成
+      processingTasks.set(taskId, {
+        status: 'completed',
+        result: imageData,
+        startTime: processingTasks.get(taskId)!.startTime,
+        token
       });
+      
     } else {
       throw new Error('No valid image URL found in the response');
     }
 
   } catch (error: any) {
-    console.error('Error processing image:', error);
+    console.error(`[Task ${taskId}] Error processing image:`, error);
     
-    // 如果使用了 token 但失败了，释放该 token（不计入使用时间）
-    if (usedToken) {
-      tokenManager.releaseToken(usedToken);
-    }
+    // 释放token（不计入使用时间）
+    tokenManager.releaseToken(token);
     
-    // 详细的错误信息
+    // 更新任务状态为失败
     let errorMessage = error.message;
     if (error.message?.includes("metadata could not be loaded")) {
       errorMessage = "API connection failed. Please check API status or try again later.";
     } else if (error.message?.includes("fetch failed")) {
       errorMessage = "Network connection error. Please check your internet connection.";
     }
-
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    
+    processingTasks.set(taskId, {
+      status: 'failed',
+      error: errorMessage,
+      startTime: processingTasks.get(taskId)!.startTime,
+      token
+    });
   }
+}
+
+// 生成唯一任务ID
+function generateTaskId() {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
 } 
