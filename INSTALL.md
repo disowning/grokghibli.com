@@ -673,11 +673,11 @@ CREATE TABLE IF NOT EXISTS users (
    sudo nano /etc/nginx/sites-available/grokghibli
    ```
    
-   添加以下内容（替换为您的域名）：
+   添加以下内容：
    ```nginx
    server {
        listen 80;
-       server_name api.yourdomain.com;  # 替换为您的域名
+       server_name api.grokghibli.com;
        
        location / {
            proxy_pass http://localhost:3002;
@@ -703,14 +703,14 @@ CREATE TABLE IF NOT EXISTS users (
    sudo systemctl restart nginx
 
    # 获取SSL证书
-   sudo certbot --nginx -d api.yourdomain.com
+   sudo certbot --nginx -d api.grokghibli.com
    ```
    
    按照Certbot的提示完成SSL配置，它会自动修改Nginx配置添加SSL设置。
 
 5. **验证HTTPS设置**
    
-   在浏览器中访问 `https://api.yourdomain.com/health`，应该返回 `{"status":"ok"}`。
+   在浏览器中访问 `https://api.grokghibli.com/health`，应该返回 `{"status":"ok"}`。
 
 ## Vercel部署
 
@@ -731,7 +731,7 @@ CREATE TABLE IF NOT EXISTS users (
    // 发送请求到处理服务器
    console.log(`Sending processing request to external server for task ${taskId}`);
    
-   fetch('https://api.yourdomain.com/process/' + taskId, {
+   fetch('https://api.grokghibli.com/process/' + taskId, {
      method: 'POST',
      headers: {
        'Content-Type': 'application/json'
@@ -752,11 +752,11 @@ CREATE TABLE IF NOT EXISTS users (
    
    在Vercel项目设置中，添加以下环境变量：
    ```
-   REDIS_HOST=your_server_ip
+   REDIS_HOST=207.211.179.194
    REDIS_PORT=6379
    REDIS_PASSWORD=your_redis_password
    HUGGING_FACE_TOKEN=your_token_here
-   MYSQL_HOST=your_server_ip
+   MYSQL_HOST=207.211.179.194
    MYSQL_PORT=3306
    MYSQL_USER=grokghibli
    MYSQL_PASSWORD=your_user_password
@@ -833,7 +833,7 @@ CREATE TABLE IF NOT EXISTS users (
 - 确保已配置HTTPS并有有效证书
 - 验证域名指向正确的服务器IP
 - 检查防火墙设置，确保端口443开放
-- 测试命令: `curl https://api.yourdomain.com/health`
+- 测试命令: `curl https://api.grokghibli.com/health`
 
 ### Redis连接问题
 
@@ -842,7 +842,7 @@ CREATE TABLE IF NOT EXISTS users (
 - 确保Redis密码正确
 - 检查Redis是否监听所有接口 (`bind 0.0.0.0`)
 - 验证Redis端口是否开放
-- 测试命令: `redis-cli -h your_server_ip -p 6379 -a your_password ping`
+- 测试命令: `redis-cli -h 207.211.179.194 -p 6379 -a your_password ping`
 
 ### MySQL连接问题
 
@@ -851,7 +851,7 @@ CREATE TABLE IF NOT EXISTS users (
 - 检查MySQL用户名和密码是否正确
 - 验证MySQL是否允许远程连接
 - 确认防火墙未阻止MySQL端口
-- 测试命令: `mysql -h your_server_ip -u grokghibli -p -e "SHOW DATABASES;"`
+- 测试命令: `mysql -h 207.211.179.194 -u grokghibli -p -e "SHOW DATABASES;"`
 
 ### 定期维护
 

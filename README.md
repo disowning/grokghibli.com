@@ -36,7 +36,7 @@ Grok Ghibli是一个使用AI技术和Next.js 14将您的照片转换为吉卜力
 Grok Ghibli采用了混合架构设计，结合了Serverless和传统服务器的优点：
 
 1. **前端**：部署在Vercel上的Next.js应用
-2. **图像处理**：外部服务器上运行的Node.js服务
+2. **图像处理**：运行在207.211.179.194上的Node.js服务，通过api.grokghibli.com域名访问
 3. **状态管理**：Redis数据库存储任务状态和结果
 4. **用户数据**：MySQL数据库存储用户信息和积分
 5. **HTTPS通信**：通过Nginx反向代理实现安全通信
@@ -138,7 +138,7 @@ Grok Ghibli使用NextAuth.js实现了完整的用户认证系统：
 为了处理长时间运行的图像转换任务，需要设置外部处理服务器：
 
 1. 准备一台具有公网IP的服务器（如AWS EC2、Oracle Cloud等）
-2. 配置域名和SSL证书（通过Nginx和Let's Encrypt）
+2. 配置域名api.grokghibli.com和SSL证书（通过Nginx和Let's Encrypt）
 3. 安装Docker和所需软件
 4. 部署图像处理服务和Redis缓存
 5. 在Vercel环境变量中配置服务器URL
@@ -277,6 +277,13 @@ GrokGhibli使用Hugging Face的AI模型进行图像转换：
 | `/api/transform-ghibli` | POST | 提交图像进行吉卜力风格转换 |
 | `/api/transform-ghibli/check/[taskId]` | GET | 检查处理任务的状态 |
 | `/api/token-status` | GET | 查看令牌使用状态（需要密钥） |
+
+外部图像处理服务API端点：
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `https://api.grokghibli.com/process/:taskId` | POST | 处理图像转换任务 |
+| `https://api.grokghibli.com/health` | GET | 检查服务健康状态 |
 
 ## 性能优化
 
