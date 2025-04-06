@@ -94,7 +94,10 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(50) PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255) NULL,
+        name VARCHAR(255) NULL,
+        image VARCHAR(255) NULL,
+        provider VARCHAR(50) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP NULL,
         monthly_credits INT DEFAULT 30,

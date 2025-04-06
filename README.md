@@ -14,6 +14,8 @@ Grok Ghibli是一个使用AI技术和Next.js 14将您的照片转换为吉卜力
 - **示例图像**：使用内置示例图像尝试转换
 - **响应式设计**：在任何设备上都能获得完美体验
 - **SEO优化**：通过元标签、站点地图和robots.txt完全优化搜索引擎
+- **用户认证系统**：使用NextAuth支持Google登录，用户积分跟踪和管理
+- **隐私与条款**：完整的隐私政策、使用条款和Cookie政策文档
 
 ## 技术栈
 
@@ -23,8 +25,10 @@ Grok Ghibli是一个使用AI技术和Next.js 14将您的照片转换为吉卜力
 - **UI组件**：Radix UI + shadcn/ui
 - **服务器组件**：React Server Components提供最佳性能
 - **状态管理**：React Hooks管理客户端状态
+- **认证系统**：NextAuth.js提供用户认证和会话管理
 - **AI集成**：通过Gradio客户端连接到Hugging Face API
 - **缓存系统**：使用Redis进行任务状态和图像存储
+- **数据库**：MySQL存储用户数据和转换记录
 - **外部图像处理**：使用独立服务器处理图像转换，解决Serverless超时限制
 
 ## 系统架构
@@ -34,9 +38,33 @@ Grok Ghibli采用了混合架构设计，结合了Serverless和传统服务器�
 1. **前端**：部署在Vercel上的Next.js应用
 2. **图像处理**：外部服务器上运行的Node.js服务
 3. **状态管理**：Redis数据库存储任务状态和结果
-4. **HTTPS通信**：通过Nginx反向代理实现安全通信
+4. **用户数据**：MySQL数据库存储用户信息和积分
+5. **HTTPS通信**：通过Nginx反向代理实现安全通信
 
 这种架构解决了Serverless环境中长时间运行任务的限制，同时保持了可扩展性和低延迟的用户体验。
+
+## 用户认证系统
+
+Grok Ghibli使用NextAuth.js实现了完整的用户认证系统：
+
+### 特点
+
+- **社交登录**：支持Google OAuth登录
+- **积分系统**：每个用户每月获得30点转换积分
+- **自动重置**：积分每月自动重置
+- **用户界面**：在导航栏显示用户信息和积分余额
+- **安全会话**：使用JWT保护用户会话
+
+### 设置认证
+
+1. 创建Google OAuth应用并获取Client ID和Client Secret
+2. 在`.env.local`文件中配置以下环境变量：
+   ```
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=your_nextauth_secret_key
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   ```
 
 ## 本地开发
 
@@ -45,6 +73,7 @@ Grok Ghibli采用了混合架构设计，结合了Serverless和传统服务器�
 - Node.js 18+ 
 - npm或yarn
 - Redis服务器（可选，用于本地测试）
+- MySQL服务器（用于用户认证和积分系统）
 
 ### 安装步骤
 
@@ -64,12 +93,21 @@ Grok Ghibli采用了混合架构设计，结合了Serverless和传统服务器�
    cp .env.example .env.local
    ```
    
-4. 在`.env.local`文件中添加所需API密钥
+4. 在`.env.local`文件中添加所需API密钥和数据库设置
    ```
    HUGGING_FACE_TOKEN=your_api_key_here
    REDIS_HOST=localhost
    REDIS_PORT=6379
    REDIS_PASSWORD=your_redis_password
+   MYSQL_HOST=localhost
+   MYSQL_PORT=3306
+   MYSQL_USER=root
+   MYSQL_PASSWORD=your_mysql_password
+   MYSQL_DATABASE=grokghibli
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=your_nextauth_secret_key
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
    ```
    
    或添加多个令牌以提高可靠性：
@@ -107,76 +145,32 @@ Grok Ghibli采用了混合架构设计，结合了Serverless和传统服务器�
 
 详细的服务器设置说明请参见[INSTALL.md](INSTALL.md)。
 
-## 高级令牌管理系统
-
-GrokGhibli使用复杂的令牌管理系统处理Hugging Face API调用：
-
-### 特点
-
-- **多令牌轮换**：支持多个API令牌的自动轮换
-- **智能选择算法**：基于使用情况、配额限制和上次使用时间优先选择令牌
-- **使用时间跟踪**：精确监控每个令牌的使用时间（精确到0.1分钟）
-- **配额限制检测**：自动检测令牌何时达到其GPU配额限制
-- **自动限制**：达到每日使用限制（5分钟）时自动切换到替代令牌
-- **每日重置**：在午夜自动重置使用统计
-- **状态监控**：提供查看令牌使用状态的API端点
-
-### 令牌配置
-
-配置令牌的三种方式：
-
-1. **单个令牌**：
-   ```
-   HUGGING_FACE_TOKEN=hf_your_token_here
-   ```
-
-2. **逗号分隔令牌列表**：
-   ```
-   HUGGING_FACE_TOKENS=hf_token1,hf_token2,hf_token3
-   ```
-
-3. **索引多个令牌**：
-   ```
-   HUGGING_FACE_TOKEN_1=hf_token1
-   HUGGING_FACE_TOKEN_2=hf_token2
-   ```
-
-### 查看令牌状态
-
-访问以下API端点查看令牌使用情况：
-/api/token-status?secret=your_admin_secret
-
-在`.env.local`中设置`ADMIN_SECRET`环境变量以保护此端点。
-
-## 异步图像处理
-
-GrokGhibli实现了高级异步图像处理系统：
-
-1. **任务队列**：图像在后台任务队列中处理
-2. **状态跟踪**：每个任务都有用于监控的ID和状态
-3. **轮询机制**：客户端轮询状态直到处理完成
-4. **进度更新**：处理过程中的实时进度更新
-5. **回退机制**：如果所有令牌都用尽，则返回原始图像
-6. **Redis存储**：使用Redis存储任务状态和处理后的图像
-7. **外部处理服务**：使用专用服务器处理图像，避免Serverless超时限制
-
 ## 项目结构
 grokghibli/
 ├── app/ # Next.js 14 App Router
 │ ├── api/ # API路由
+│ │ ├── auth/ # NextAuth.js认证路由
+│ │ ├── user/ # 用户信息API
 │ │ ├── transform-ghibli/ # 图像转换API
 │ │ │ ├── route.ts # 主API端点
 │ │ │ └── check/[taskId]/ # 状态检查端点
 │ │ └── token-status/ # 令牌状态API
-│ ├── blog/ # 博客页面
+│ ├── auth/ # 认证相关页面
+│ │ ├── signin/ # 登录页面
+│ │ └── error/ # 认证错误页面 
+│ ├── about/ # 关于我们页面
 │ ├── contact/ # 联系页面
-│ ├── features/ # 功能页面
-│ ├── showcase/ # 展示页面
+│ ├── gallery/ # 画廊页面
+│ ├── privacy-policy/ # 隐私政策页面
+│ ├── terms-of-service/ # 使用条款页面
+│ ├── cookie-policy/ # Cookie政策页面
 │ ├── page.tsx # 主页
+│ ├── providers.tsx # 全局providers
 │ └── layout.tsx # 根布局
 ├── components/ # React组件
 │ ├── ui/ # UI组件库
 │ ├── Header.tsx # 网站头部组件
+│ ├── Footer.tsx # 网站底部组件
 │ ├── ImageUploader.tsx # 图像上传组件
 │ ├── GhibliFeatures.tsx# 功能展示组件
 │ └── Pricing.tsx # 定价组件
@@ -194,6 +188,61 @@ grokghibli/
 │ ├── showcase/ # 转换前/后的示例
 │ └── samples/ # 示例图像
 └── types/ # TypeScript类型定义
+
+## 用户积分系统
+
+Grok Ghibli实现了积分系统以控制用户对图像转换功能的使用：
+
+### 特点
+
+- **默认积分**：每个用户每月获得30点积分
+- **自动续期**：积分每月自动刷新
+- **积分消耗**：每次图像转换消耗1点积分
+- **积分显示**：用户界面实时显示剩余积分
+- **API集成**：提供更新和查询积分的API接口
+
+### API端点
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/api/user` | GET | 获取当前登录用户的信息，包括积分 |
+| `/api/user` | PUT | 更新用户积分 |
+
+## 隐私与法律
+
+Grok Ghibli提供了完整的隐私和法律文档，以保护用户权益并符合数据保护法规：
+
+### 隐私政策
+
+我们的[隐私政策](/privacy-policy)详细说明了我们如何收集、使用、披露和保护用户数据。主要内容包括：
+
+- 收集的信息类型（账户信息、上传的图像、使用数据）
+- 数据使用目的（提供服务、改进体验、通信）
+- 图像处理和临时存储政策
+- 数据分享和安全措施
+- 用户权利和数据保留政策
+
+### 使用条款
+
+我们的[使用条款](/terms-of-service)规定了使用本服务的条件和限制，包括：
+
+- 服务描述和用户账户规则
+- 积分系统说明
+- 用户内容权利和限制
+- 禁止使用行为
+- 知识产权和免责声明
+- 服务修改和终止条件
+
+### Cookie政策
+
+我们的[Cookie政策](/cookie-policy)解释了网站如何使用Cookie和类似技术：
+
+- Cookie的类型和用途
+- 第三方Cookie的使用
+- Cookie管理选项
+- 与隐私政策的关系
+
+所有这些文档均在页面底部可轻松访问，确保用户了解我们如何处理他们的数据和使用我们的服务。
 
 ## 图像资源
 
@@ -265,16 +314,30 @@ GrokGhibli包含以下性能优化：
    - 检查令牌状态端点以确定哪些令牌可用
    - 考虑订阅Hugging Face Pro以获得更高限制
 
-4. **Serverless函数超时**
-   - 该应用使用异步处理模型和外部处理服务器避免超时
-   - 如果仍然遇到超时，请尝试进一步减小图像尺寸
-   - 确保图像处理服务器正常运行
+4. **登录问题**
+   - 确保已正确配置Google OAuth凭据
+   - 检查环境变量中的NextAuth设置
+   - 清除浏览器缓存和Cookie后重试
+   - 确认MySQL数据库正常运行并可访问
 
-5. **转换后图像不显示**
-   - 检查浏览器控制台的错误消息
-   - 尝试不同的浏览器或清除缓存
-   - 确保您的浏览器支持WebP图像
-   - 尝试不同的图像格式或大小
+5. **积分未正确更新**
+   - 检查MySQL数据库连接
+   - 验证users表是否存在所需的字段
+   - 检查API路由的错误日志
+   - 尝试重新登录
+
+## 未来增强
+
+计划的未来增强包括：
+
+1. **更多风格选项**：更多吉卜力风格变体
+2. **批量处理**：一次转换多个图像
+3. **积分购买**：允许用户购买额外积分
+4. **高级账户**：提供订阅计划获取更多功能
+5. **风格自定义**：调整转换参数
+6. **视频处理**：转换短视频剪辑
+7. **社交分享**：直接分享到社交媒体平台
+8. **更多登录选项**：添加更多社交登录提供商
 
 ## 贡献
 
@@ -294,14 +357,3 @@ GrokGhibli实现了以下SEO优化：
 4. **站点地图**：`sitemap.xml`文件帮助搜索引擎发现和索引所有页面
 5. **Robots.txt**：指导搜索引擎爬虫行为以优化爬取效率
 6. **页面速度优化**：使用Next.js服务器组件和图像优化加快加载速度
-
-## 未来增强
-
-计划的未来增强包括：
-
-1. **更多风格选项**：更多吉卜力风格变体
-2. **批量处理**：一次转换多个图像
-3. **用户账户**：保存转换历史
-4. **风格自定义**：调整转换参数
-5. **视频处理**：转换短视频剪辑
-6. **社交分享**：直接分享到社交媒体平台

@@ -3,12 +3,15 @@
 ## 目录
 1. [快速启动](#快速启动)
 2. [Token系统说明](#token-系统说明)
-3. [服务器部署](#服务器部署)
+3. [用户认证系统配置](#用户认证系统配置)
+4. [隐私与法律文档配置](#隐私与法律文档配置)
+5. [服务器部署](#服务器部署)
    - [图像处理服务器设置](#图像处理服务器设置)
    - [Redis缓存配置](#redis缓存配置)
+   - [MySQL数据库配置](#mysql数据库配置)
    - [Nginx反向代理配置](#nginx反向代理配置)
-4. [Vercel部署](#vercel部署)
-5. [故障排除](#故障排除)
+6. [Vercel部署](#vercel部署)
+7. [故障排除](#故障排除)
 
 ## 快速启动
 
@@ -30,7 +33,7 @@
    cp .env.example .env.local
    ```
    
-   然后编辑 `.env.local` 文件，添加您的 Hugging Face API token。
+   然后编辑 `.env.local` 文件，添加您的 Hugging Face API token、数据库配置以及Google OAuth凭据。
 
 4. **启动开发服务器**
    ```bash
@@ -77,6 +80,172 @@
 
 配置 ADMIN_SECRET 后，可以通过以下 URL 查看所有 token 的使用状态：
 http://localhost:3000/api/token-status?secret=your_admin_secret
+
+## 用户认证系统配置
+
+Grok Ghibli使用NextAuth.js实现用户认证和积分管理系统。以下是完整的配置流程：
+
+### 谷歌OAuth配置
+
+1. **创建Google Cloud项目**
+   - 访问 [Google Cloud Console](https://console.cloud.google.com/)
+   - 创建新项目或使用现有项目
+   - 导航到"API和服务" > "OAuth同意屏幕"
+   - 设置OAuth同意屏幕（内部或外部用户类型）
+   - 添加必要的信息（应用名称、联系方式等）
+
+2. **创建OAuth客户端ID**
+   - 导航到"凭据"
+   - 点击"创建凭据" > "OAuth客户端ID"
+   - 应用类型选择"Web应用"
+   - 添加应用名称
+   - 添加重定向URI：
+     - 开发环境: `http://localhost:3000/api/auth/callback/google`
+     - 生产环境: `https://yourdomain.com/api/auth/callback/google`
+   - 点击"创建"，记下生成的客户端ID和客户端密钥
+
+### 环境变量配置
+
+将以下环境变量添加到 `.env.local` 文件：
+
+```
+# Google OAuth配置
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+
+# NextAuth配置
+NEXTAUTH_URL=http://localhost:3000 # 开发环境
+# NEXTAUTH_URL=https://yourdomain.com # 生产环境
+NEXTAUTH_SECRET=generate_a_secure_random_string_here
+
+# MySQL配置
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_mysql_password
+MYSQL_DATABASE=grokghibli
+```
+
+对于生产环境，可以使用以下命令生成安全的随机字符串作为NEXTAUTH_SECRET：
+```bash
+openssl rand -base64 32
+```
+
+### MySQL数据库准备
+
+1. **创建数据库表**
+
+确保MySQL服务器中存在以下表结构：
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(50) PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NULL,
+  name VARCHAR(255) NULL,
+  image VARCHAR(1000) NULL,
+  provider VARCHAR(50) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_login TIMESTAMP NULL,
+  monthly_credits INT DEFAULT 30,
+  credits_reset_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 MONTH),
+  INDEX (email)
+);
+```
+
+在项目中，这个表的创建通常由server.js中的initDatabase函数处理。
+
+### NextAuth配置文件
+
+确保项目中存在以下文件结构：
+- `/app/api/auth/[...nextauth]/route.ts` - NextAuth API路由
+- `/app/providers.tsx` - 全局认证providers组件
+- `/app/auth/signin/page.tsx` - 自定义登录页面
+- `/app/auth/error/page.tsx` - 认证错误页面
+
+## 隐私与法律文档配置
+
+为了确保您的应用程序符合数据保护法规和最佳实践，Grok Ghibli包含了三个关键的法律文档页面。这些页面已预先配置，但您应根据您的实际业务情况进行自定义。
+
+### 文档概述
+
+1. **隐私政策** (`app/privacy-policy/page.tsx`)
+   - 详细说明应用如何收集、处理和保护用户数据
+   - 包括数据收集范围、使用目的、数据分享情况和用户权利
+
+2. **使用条款** (`app/terms-of-service/page.tsx`)
+   - 规定使用服务的条件和限制
+   - 包括账户规则、积分系统、用户内容权利和禁止行为
+
+3. **Cookie政策** (`app/cookie-policy/page.tsx`)
+   - 解释网站如何使用Cookie和类似技术
+   - 包括Cookie类型、第三方Cookie、管理选项等
+
+### 自定义步骤
+
+1. **更新联系信息**
+   ```tsx
+   // 在每个文档中更新电子邮件地址和联系信息
+   <p>
+     Email: privacy@yourdomain.com<br />
+     // 其他联系信息
+   </p>
+   ```
+
+2. **修改生效日期**
+   - 默认情况下，文档显示当前日期作为"最后更新"日期
+   - 如需固定日期，请修改以下代码：
+   ```tsx
+   {/* 将动态日期替换为固定日期 */}
+   <p className="text-gray-600 mb-8">Last updated: April 1, 2025</p>
+   ```
+
+3. **调整法律管辖区**
+   ```tsx
+   // 在使用条款中更新适用法律
+   <p>
+     These Terms shall be governed by and construed in accordance with the laws of
+     [您的法律管辖区], without regard to its conflict of law provisions.
+   </p>
+   ```
+
+4. **添加特定业务条款**
+   - 根据您的业务模式和区域法规要求，在相应部分添加或修改条款
+
+### 链接设置
+
+这些文档已通过页面底部的Footer组件链接。Footer组件包含三个法律文档的链接：
+
+```tsx
+// app/components/Footer.tsx
+<div>
+  <h3 className="text-lg font-semibold mb-4 text-ghibli-primary">Legal</h3>
+  <ul className="space-y-2">
+    <li>
+      <Link href="/privacy-policy" className="text-gray-600 hover:text-ghibli-primary">
+        Privacy Policy
+      </Link>
+    </li>
+    <li>
+      <Link href="/terms-of-service" className="text-gray-600 hover:text-ghibli-primary">
+        Terms of Service
+      </Link>
+    </li>
+    <li>
+      <Link href="/cookie-policy" className="text-gray-600 hover:text-ghibli-primary">
+        Cookie Policy
+      </Link>
+    </li>
+  </ul>
+</div>
+```
+
+### 重要注意事项
+
+- **法律咨询**: 这些文档模板仅作为起点。强烈建议在部署前咨询法律专业人士，确保文档符合您的具体业务需求和适用法律法规。
+- **数据处理活动**: 确保文档中描述的数据处理活动与您的实际操作一致。
+- **定期更新**: 随着法规变化和业务发展，定期审查和更新这些文档。
+- **翻译**: 如果您的服务面向不同语言的用户，考虑提供多语言版本的法律文档。
 
 ## 服务器部署
 
@@ -177,7 +346,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
    // 处理请求
    app.post('/process/:taskId', async (req, res) => {
      const { taskId } = req.params;
-     const { prompt, height, width, seed, token, imageBase64 } = req.body;
+     const { prompt, height, width, seed, token, imageBase64, userId } = req.body;
      
      console.log(`Received processing request for task ${taskId}`);
      
@@ -185,10 +354,10 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
      res.json({ received: true });
      
      // 在后台处理图像
-     processImage(taskId, imageBase64, prompt, height, width, seed, token).catch(console.error);
+     processImage(taskId, imageBase64, prompt, height, width, seed, token, userId).catch(console.error);
    });
 
-   async function processImage(taskId, imageBase64, prompt, height, width, seed, token) {
+   async function processImage(taskId, imageBase64, prompt, height, width, seed, token, userId) {
      try {
        console.log(`Processing task ${taskId}: ${prompt}`);
        
@@ -199,6 +368,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
            status: 'processing',
            startTime: Date.now(),
            token,
+           userId,
            progress: 10,
            prompt
          }), 
@@ -223,6 +393,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
              status: 'processing',
              startTime: Date.now(),
              token,
+             userId,
              progress: 20,
              prompt
            }), 
@@ -251,6 +422,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
              status: 'processing',
              startTime: Date.now(),
              token,
+             userId,
              progress: 70,
              prompt
            }), 
@@ -278,6 +450,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
                status: 'processing',
                startTime: Date.now(),
                token,
+               userId,
                progress: 90,
                prompt
              }), 
@@ -290,6 +463,28 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
            const base64Data = Buffer.from(new Uint8Array(imageData)).toString('base64');
            await redis.set(`task:${taskId}:image`, base64Data, 'EX', 3600);
            
+           // 如果有用户ID，减少其积分（发送到服务更新用户积分）
+           if (userId) {
+             try {
+               const apiUrl = process.env.API_URL || 'http://localhost:3000';
+               await fetch(`${apiUrl}/api/user-credits`, {
+                 method: 'POST',
+                 headers: {
+                   'Content-Type': 'application/json',
+                   'Authorization': `Bearer ${process.env.API_TOKEN}`
+                 },
+                 body: JSON.stringify({
+                   userId,
+                   operation: 'subtract',
+                   amount: 1
+                 })
+               });
+               console.log(`Updated credits for user ${userId}`);
+             } catch (creditError) {
+               console.error(`Failed to update credits for user ${userId}:`, creditError);
+             }
+           }
+           
            // 完成任务
            await redis.set(
              `task:${taskId}:status`, 
@@ -297,6 +492,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
                status: 'completed',
                startTime: Date.now(),
                token,
+               userId,
                progress: 100,
                prompt
              }), 
@@ -329,6 +525,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
                status: 'completed',
                startTime: Date.now(),
                token,
+               userId,
                progress: 100,
                prompt,
                note: 'Using original image due to GPU quota exceeded'
@@ -350,6 +547,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
            status: 'failed',
            startTime: Date.now(),
            token,
+           userId,
            error: error.message,
            prompt
          }), 
@@ -381,6 +579,8 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
      -e REDIS_HOST=your_redis_container_name \
      -e REDIS_PORT=6379 \
      -e REDIS_PASSWORD=your_redis_password \
+     -e API_URL=https://yourdomain.com \
+     -e API_TOKEN=your_secure_api_token \
      image-processor
    ```
 
@@ -406,9 +606,52 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
    
    应该返回"PONG"。
 
+### MySQL数据库配置
+
+1. **使用Docker安装MySQL**
+
+   ```bash
+   docker run -d \
+     --name mysql-db \
+     -p 3306:3306 \
+     --restart always \
+     -v mysql-data:/var/lib/mysql \
+     -e MYSQL_ROOT_PASSWORD=your_root_password \
+     -e MYSQL_DATABASE=grokghibli \
+     -e MYSQL_USER=grokghibli \
+     -e MYSQL_PASSWORD=your_user_password \
+     mysql:8.0
+   ```
+
+2. **初始化数据库表**
+
+   ```bash
+   docker exec -i mysql-db mysql -ugrokghibli -pyour_user_password grokghibli << EOF
+   CREATE TABLE IF NOT EXISTS users (
+     id VARCHAR(50) PRIMARY KEY,
+     email VARCHAR(255) UNIQUE NOT NULL,
+     password_hash VARCHAR(255) NULL,
+     name VARCHAR(255) NULL,
+     image VARCHAR(1000) NULL,
+     provider VARCHAR(50) NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     last_login TIMESTAMP NULL,
+     monthly_credits INT DEFAULT 30,
+     credits_reset_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 MONTH),
+     INDEX (email)
+   );
+   EOF
+   ```
+
+3. **测试MySQL连接**
+
+   ```bash
+   docker exec -it mysql-db mysql -ugrokghibli -pyour_user_password -e "SELECT 'Connection successful!';"
+   ```
+
 ### Nginx反向代理配置
 
-为了使Vercel能够安全连接到您的图像处理服务，需要设置HTTPS反向代理。
+为了使Vercel能够安全连接到您的图像处理服务和数据库，需要设置HTTPS反向代理。
 
 1. **安装Nginx**
    
@@ -427,7 +670,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
    
    创建配置文件：
    ```bash
-   sudo nano /etc/nginx/sites-available/image-processor
+   sudo nano /etc/nginx/sites-available/grokghibli
    ```
    
    添加以下内容（替换为您的域名）：
@@ -455,11 +698,7 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
 4. **启用配置并获取SSL证书**
    
    ```bash
-   sudo ln -s /etc/nginx/sites-available/image
-   4. **启用配置并获取SSL证书**
-   
-   ```bash
-   sudo ln -s /etc/nginx/sites-available/image-processor /etc/nginx/sites-enabled/
+   sudo ln -s /etc/nginx/sites-available/grokghibli /etc/nginx/sites-enabled/
    sudo nginx -t  # 测试配置
    sudo systemctl restart nginx
 
@@ -477,10 +716,14 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
 
 1. **准备Next.js应用**
    
-   修改应用中的API路由，将图像处理请求发送到您的外部服务器：
+   修改应用中的API路由，将图像处理请求发送到您的外部服务器，并确保用户ID也一同发送：
    
    编辑 `app/api/transform-ghibli/route.ts` 文件：
    ```typescript
+   // 获取当前会话和用户ID
+   const session = await getServerSession(authOptions);
+   const userId = session?.user?.id;
+   
    // 将图像转为Base64
    const imageBuffer = await imageFile.arrayBuffer();
    const imageBase64 = Buffer.from(new Uint8Array(imageBuffer)).toString('base64');
@@ -499,7 +742,8 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
        width,
        seed,
        token: usedToken,
-       imageBase64
+       imageBase64,
+       userId
      })
    }).catch(err => console.error('Failed to start processing:', err));
    ```
@@ -512,6 +756,14 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
    REDIS_PORT=6379
    REDIS_PASSWORD=your_redis_password
    HUGGING_FACE_TOKEN=your_token_here
+   MYSQL_HOST=your_server_ip
+   MYSQL_PORT=3306
+   MYSQL_USER=grokghibli
+   MYSQL_PASSWORD=your_user_password
+   NEXTAUTH_URL=https://yourdomain.com
+   NEXTAUTH_SECRET=your_nextauth_secret
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
    ```
    
    或者使用多个Token：
@@ -539,15 +791,40 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
 
 完整部署后，系统的工作流程如下：
 
-1. 用户在网站上传图片到Vercel应用
-2. Vercel应用将任务ID和图片数据发送到您的外部服务器
-3. 外部服务器处理图片并将结果存储在Redis中
-4. Vercel应用定期检查任务状态
-5. 处理完成后，Vercel从Redis获取结果并展示给用户
+1. 用户通过Google OAuth登录应用
+2. Vercel应用验证身份并创建会话
+3. 用户上传图片以进行吉卜力风格转换
+4. Vercel应用将任务ID、用户ID和图片数据发送到外部服务器
+5. 外部服务器处理图片并将结果存储在Redis中
+6. 外部服务器减少用户的积分余额
+7. Vercel应用定期检查任务状态
+8. 处理完成后，Vercel从Redis获取结果并展示给用户
 
 这种混合架构解决了Vercel Serverless函数的60秒超时限制问题，同时保持了前端的高性能和可扩展性。
 
 ## 故障排除
+
+### 认证问题
+
+**问题**: 用户无法登录或登录后立即被登出  
+**解决方案**: 
+- 检查环境变量中的NEXTAUTH_URL和NEXTAUTH_SECRET是否正确设置
+- 确认Google OAuth凭据配置正确，包括重定向URI
+- 验证数据库连接正常，users表结构正确
+- 测试命令：使用不同浏览器尝试登录
+- 查看Next.js日志中的错误信息
+
+### 积分问题
+
+**问题**: 用户积分未更新或显示不正确  
+**解决方案**:
+- 检查MySQL数据库中用户记录的积分字段
+- 验证积分更新API是否正常工作
+- 确保图像处理服务有权限调用积分更新API
+- 测试命令：直接查询数据库检查积分值
+  ```sql
+  SELECT id, email, monthly_credits, credits_reset_at FROM users WHERE email='user@example.com';
+  ```
 
 ### Vercel连接问题
 
@@ -567,188 +844,41 @@ http://localhost:3000/api/token-status?secret=your_admin_secret
 - 验证Redis端口是否开放
 - 测试命令: `redis-cli -h your_server_ip -p 6379 -a your_password ping`
 
-### 图像处理服务问题
+### MySQL连接问题
 
-**问题**: 图像处理服务启动失败或崩溃  
+**问题**: 无法连接到MySQL数据库  
 **解决方案**:
-- 检查Docker日志: `docker logs grokghibli-image-processor`
-- 确保所有依赖正确安装
-- 验证服务器有足够内存和CPU资源
-- 可能需要调整Node.js内存限制: `--max-old-space-size=4096`
+- 检查MySQL用户名和密码是否正确
+- 验证MySQL是否允许远程连接
+- 确认防火墙未阻止MySQL端口
+- 测试命令: `mysql -h your_server_ip -u grokghibli -p -e "SHOW DATABASES;"`
 
-### 任务处理卡在某个进度
+### 定期维护
 
-**问题**: 任务进度停滞，不继续前进  
-**解决方案**:
-- 检查图像处理服务器日志找出卡住的环节
-- 验证Hugging Face API是否正常工作
-- 检查是否已达到API配额限制
-- 考虑重启图像处理服务: `docker restart grokghibli-image-processor`
+为确保系统稳定运行，请定期执行以下维护任务：
 
-### 任务队列管理
-
-为管理任务队列和监控系统性能，可以添加管理端点：
-
-```javascript
-// 在server.js中添加
-app.get('/admin/tasks', async (req, res) => {
-  const keys = await redis.keys('task:*:status');
-  const tasks = [];
-  
-  for (const key of keys) {
-    const taskId = key.split(':')[1];
-    const status = await redis.get(key);
-    tasks.push({ taskId, status: JSON.parse(status) });
-  }
-  
-  res.json(tasks);
-});
-```
-
-保护此端点，仅允许管理员访问：
-
-```javascript
-app.use('/admin', (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
-  if (apiKey !== process.env.ADMIN_API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  next();
-});
-```
-
-## 性能优化
-
-### Redis性能优化
-
-在`/etc/redis/redis.conf`中添加以下配置：
-maxmemory 2gb
-maxmemory-policy allkeys-lru
-
-### Nginx性能优化
-
-在`/etc/nginx/nginx.conf`中的`http`块添加：
-
-```nginx
-http {
-    # 基本设置
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    keepalive_timeout 65;
-    types_hash_max_size 2048;
-    
-    # 缓冲区设置
-    client_body_buffer_size 10K;
-    client_header_buffer_size 1k;
-    client_max_body_size 50m;
-    large_client_header_buffers 4 4k;
-    
-    # 缓存设置
-    open_file_cache max=1000 inactive=20s;
-    open_file_cache_valid 30s;
-    open_file_cache_min_uses 2;
-    open_file_cache_errors on;
-    
-    # Gzip压缩
-    gzip on;
-    gzip_disable "msie6";
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_buffers 16 8k;
-    gzip_http_version 1.1;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-}
-```
-
-### Node.js性能优化
-
-启动图像处理服务时添加以下环境变量：
-
-```bash
-docker run -d ... -e NODE_ENV=production image-processor
-```
-
-## 定期维护
-
-1. **SSL证书更新**
-   
-   Let's Encrypt证书每90天需要更新一次，通常Certbot会自动更新：
+1. **更新依赖**
    ```bash
-   sudo certbot renew --dry-run  # 测试更新
-   ```
-   
-   确保添加cron任务自动更新：
-   ```bash
-   sudo crontab -e
-   # 添加: 0 3 * * * /usr/bin/certbot renew --quiet
+   npm update
    ```
 
-2. **备份Redis数据**
-   
-   创建定期备份脚本：
+2. **备份数据库**
    ```bash
-   #!/bin/bash
-   BACKUP_DIR="/backup/redis"
-   DATE=$(date +%Y%m%d)
-   mkdir -p $BACKUP_DIR
-   docker exec redis-cache redis-cli -a "your_password" SAVE
-   docker cp redis-cache:/data/dump.rdb $BACKUP_DIR/redis-$DATE.rdb
-   ```
-   
-   添加cron任务每日执行：
-   ```bash
-   0 2 * * * /path/to/backup-script.sh
+   # MySQL备份
+   docker exec mysql-db sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" grokghibli' > grokghibli_$(date +%Y-%m-%d).sql
    ```
 
 3. **监控服务器资源**
-   
-   安装监控工具：
    ```bash
-   sudo apt install htop iotop
-   ```
-   
-   考虑添加更高级的监控解决方案，如Prometheus和Grafana。
-
-## 安全最佳实践
-
-1. **防火墙设置**
-   
-   ```bash
-   sudo ufw allow ssh
-   sudo ufw allow 80/tcp
-   sudo ufw allow 443/tcp
-   sudo ufw enable
+   htop
    ```
 
-2. **Redis安全设置**
-   
-   - 使用强密码
-   - 仅允许内部网络访问
-   - 禁用危险命令（在redis.conf中）：
-     ```
-     rename-command FLUSHALL ""
-     rename-command CONFIG ""
-     ```
-
-3. **定期更新**
-   
+4. **检查SSL证书有效期**
    ```bash
-   sudo apt update
-   sudo apt upgrade
-   docker pull redis:latest
-   docker pull node:18-alpine
+   sudo certbot certificates
    ```
 
-4. **日志监控**
-   
+5. **更新系统软件**
    ```bash
-   sudo apt install logwatch fail2ban
+   sudo apt update && sudo apt upgrade -y
    ```
-
-## 结论
-
-这套架构为在Vercel上部署的Next.js应用提供了处理长时间运行任务的解决方案，通过将计算密集型任务转移到外部服务器，同时使用Redis进行状态管理，您可以克服Serverless环境的限制，同时保持高可用性和可扩展性。
-
-本指南涵盖了从服务器设置到性能优化的完整流程，但根据您的具体需求，可能需要进一步调整某些参数或配置。
