@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTaskStatus, getTaskResultImage, deleteTask } from '../../route';
+import { getTaskStatus, getTaskImage, deleteTask } from '@/lib/cache-service';
 
 export async function GET(
   request: NextRequest,
@@ -9,8 +9,8 @@ export async function GET(
     const taskId = params.taskId;
     console.log(`[Check API] Checking task: ${taskId}`);
 
-    // 获取任务状态
-    const task = getTaskStatus(taskId);
+    // 从Redis获取任务状态
+    const task = await getTaskStatus(taskId);
     if (!task) {
       console.log(`[Check API] Task not found: ${taskId}`);
       return NextResponse.json({ status: 'not_found' }, { status: 404 });
@@ -21,7 +21,7 @@ export async function GET(
       console.log(`[Check API] Task completed, fetching image data for ${taskId}`);
       
       // 获取结果图像
-      const imageData = getTaskResultImage(taskId);
+      const imageData = await getTaskImage(taskId);
       
       if (!imageData) {
         console.log(`[Check API] No image data found for ${taskId}`);
@@ -32,9 +32,6 @@ export async function GET(
       }
       
       console.log(`[Check API] Successfully got image for ${taskId}, returning image data`);
-      
-      // 删除任务数据
-      deleteTask(taskId);
       
       // 返回图片并设置正确的content-type
       return new NextResponse(imageData, {
@@ -50,8 +47,6 @@ export async function GET(
     // 任务失败
     if (task.status === 'failed') {
       console.log(`[Check API] Task failed for ${taskId}: ${task.error}`);
-      // 删除任务数据
-      deleteTask(taskId);
       return NextResponse.json({ 
         status: 'failed',
         error: task.error || 'Unknown error occurred' 
@@ -72,4 +67,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}

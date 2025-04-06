@@ -366,11 +366,11 @@ export default function ImageUploader() {
                   </p>
                 </div>
               )}
+              </div>
             </div>
-          </div>
-
+            
           {/* Right side - Transformed Image */}
-          <div className="space-y-4">
+            <div className="space-y-4">
             <div className="relative h-[400px] rounded-lg bg-gray-50">
               {transformedImage ? (
                 <div className="relative w-full h-full flex items-center justify-center">
@@ -427,7 +427,7 @@ export default function ImageUploader() {
                             onClick={() => handleSelectSample(example.src)}
                           >
                             <div className="relative aspect-[4/3]">
-                              <Image
+                      <Image 
                                 src={example.src}
                                 alt={`Example ${example.title}`}
                                 fill
@@ -439,19 +439,19 @@ export default function ImageUploader() {
                             </div>
                           </div>
                         ))}
-                      </div>
-                    </div>
+                          </div>
+                        </div>
                   ) : (
                     <p className="text-sm text-gray-500">
                       {error || "Click Generate to transform your image into Ghibli style"}
                     </p>
                   )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
+                        </div>
+                      )}
+                    </div>
+                        </div>
+                      </div>
+                      
         {/* Action Buttons */}
         <div className="flex justify-center gap-4 mt-8">
           {(originalImage || sampleImage) && !isLoading && (
@@ -467,15 +467,15 @@ export default function ImageUploader() {
                 </Button>
               ) : (
                 <>
-                  <Button
+                        <Button
                     onClick={handleRegenerateImage}
-                    variant="outline"
+                          variant="outline"
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Regenerate
                   </Button>
                   <Button
-                    onClick={() => {
+                          onClick={() => {
                       const link = document.createElement('a');
                       link.href = transformedImage;
                       link.download = 'ghibli-style.webp';
@@ -485,7 +485,7 @@ export default function ImageUploader() {
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download
-                  </Button>
+                        </Button>
                 </>
               )}
             </>

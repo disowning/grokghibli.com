@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@gradio/client';
 import { tokenManager, type HuggingFaceToken } from '@/lib/token-manager';
-import * as fs from 'fs';
-import * as path from 'path';
-import os from 'os';
+import { saveTaskStatus, saveTaskImage, getTaskStatus } from '@/lib/cache-service';
 
 // 设置最大超时时间（符合Vercel Hobby计划限制）
 export const maxDuration = 60; // 60 seconds timeout
@@ -18,101 +16,6 @@ export type ProcessingTask = {
   token: HuggingFaceToken,
   progress?: number
 };
-
-// 存储任务的目录
-const TASKS_DIR = path.join(os.tmpdir(), 'ghibli-tasks');
-
-// 确保目录存在
-try {
-  if (!fs.existsSync(TASKS_DIR)) {
-    fs.mkdirSync(TASKS_DIR, { recursive: true });
-    console.log(`Created tasks directory: ${TASKS_DIR}`);
-  }
-} catch (error) {
-  console.error('Failed to create tasks directory:', error);
-}
-
-// 保存任务状态（不保存图像数据，仅保存状态信息）
-export function saveTaskStatus(taskId: string, task: Omit<ProcessingTask, 'result' | 'resultImage'>) {
-  try {
-    const taskFilePath = path.join(TASKS_DIR, `${taskId}.json`);
-    fs.writeFileSync(taskFilePath, JSON.stringify({
-      ...task,
-      token: task.token.substring(0, 10) + '...' // 不保存完整token
-    }));
-    console.log(`Saved task status for ${taskId}`);
-  } catch (error) {
-    console.error(`Failed to save task status for ${taskId}:`, error);
-  }
-}
-
-// 保存处理结果图像
-export function saveTaskResult(taskId: string, imageData: ArrayBuffer) {
-  try {
-    const imageFilePath = path.join(TASKS_DIR, `${taskId}.webp`);
-    fs.writeFileSync(imageFilePath, Buffer.from(new Uint8Array(imageData)));
-    console.log(`Saved result image for ${taskId}, size: ${imageData.byteLength} bytes`);
-    
-    // 更新任务状态
-    const taskStatus = getTaskStatus(taskId);
-    if (taskStatus) {
-      saveTaskStatus(taskId, {
-        ...taskStatus,
-        status: 'completed'
-      });
-    }
-  } catch (error) {
-    console.error(`Failed to save result image for ${taskId}:`, error);
-  }
-}
-
-// 获取任务状态
-export function getTaskStatus(taskId: string): Omit<ProcessingTask, 'result' | 'resultImage'> | null {
-  try {
-    const taskFilePath = path.join(TASKS_DIR, `${taskId}.json`);
-    if (fs.existsSync(taskFilePath)) {
-      const data = fs.readFileSync(taskFilePath, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error(`Failed to get task status for ${taskId}:`, error);
-  }
-  return null;
-}
-
-// 获取任务结果图像
-export function getTaskResultImage(taskId: string): Uint8Array | null {
-  try {
-    const imageFilePath = path.join(TASKS_DIR, `${taskId}.webp`);
-    if (fs.existsSync(imageFilePath)) {
-      // 使用fs.readFileSync直接读取文件为Buffer，然后返回
-      return fs.readFileSync(imageFilePath);
-    }
-  } catch (error) {
-    console.error(`Failed to get result image for ${taskId}:`, error);
-  }
-  return null;
-}
-
-// 删除任务
-export function deleteTask(taskId: string) {
-  try {
-    const taskFilePath = path.join(TASKS_DIR, `${taskId}.json`);
-    const imageFilePath = path.join(TASKS_DIR, `${taskId}.webp`);
-    
-    if (fs.existsSync(taskFilePath)) {
-      fs.unlinkSync(taskFilePath);
-    }
-    
-    if (fs.existsSync(imageFilePath)) {
-      fs.unlinkSync(imageFilePath);
-    }
-    
-    console.log(`Deleted task ${taskId}`);
-  } catch (error) {
-    console.error(`Failed to delete task ${taskId}:`, error);
-  }
-}
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -150,11 +53,12 @@ export async function POST(request: NextRequest) {
       status: 'processing' as const,
       startTime: Date.now(),
       token: usedToken,
-      progress: 0
+      progress: 0,
+      prompt
     };
     
-    // 保存任务状态
-    saveTaskStatus(taskId, taskData);
+    // 保存任务状态到Redis
+    await saveTaskStatus(taskId, taskData);
     
     // 记录 token 使用开始
     tokenManager.startUsingToken(usedToken);
@@ -199,11 +103,12 @@ async function processImageAsync(
     });
     
     // 更新进度
-    saveTaskStatus(taskId, {
+    await saveTaskStatus(taskId, {
       status: 'processing',
       startTime: Date.now(),
       token,
-      progress: 10
+      progress: 10,
+      prompt
     });
     
     // 准备图片数据以在失败时使用
@@ -218,11 +123,12 @@ async function processImageAsync(
       const blob = new Blob([originalImageBuffer], { type: imageFile.type });
 
       // 更新进度
-      saveTaskStatus(taskId, {
+      await saveTaskStatus(taskId, {
         status: 'processing',
         startTime: Date.now(),
         token,
-        progress: 20
+        progress: 20,
+        prompt
       });
 
       // 设置API调用参数
@@ -243,22 +149,24 @@ async function processImageAsync(
       });
       
       // 更新进度
-      saveTaskStatus(taskId, {
+      await saveTaskStatus(taskId, {
         status: 'processing',
         startTime: Date.now(),
         token,
-        progress: 30
+        progress: 30,
+        prompt
       });
 
       // 调用API
       const result = await client.predict("/single_condition_generate_image", params);
       
       // 更新进度
-      saveTaskStatus(taskId, {
+      await saveTaskStatus(taskId, {
         status: 'processing',
         startTime: Date.now(),
         token,
-        progress: 70
+        progress: 70,
+        prompt
       });
 
       if (Array.isArray(result.data) && result.data.length > 0 && result.data[0].url) {
@@ -274,11 +182,12 @@ async function processImageAsync(
         console.log(`[Task ${taskId}] Successfully downloaded image data, size: ${imageData.byteLength} bytes`);
         
         // 更新进度
-        saveTaskStatus(taskId, {
+        await saveTaskStatus(taskId, {
           status: 'processing',
           startTime: Date.now(),
           token,
-          progress: 90
+          progress: 90,
+          prompt
         });
         
         // 如果图片数据为空或太小，可能有问题
@@ -287,7 +196,7 @@ async function processImageAsync(
         }
         
         // 记录 token 成功使用时间
-        const task = getTaskStatus(taskId);
+        const task = await getTaskStatus(taskId);
         if (task) {
           const elapsedSeconds = (Date.now() - task.startTime) / 1000;
           tokenManager.finishUsingToken(token, elapsedSeconds);
@@ -295,15 +204,16 @@ async function processImageAsync(
         
         console.log(`[Task ${taskId}] Image processing completed, saving result`);
         
-        // 保存结果图像
-        saveTaskResult(taskId, imageData);
+        // 保存结果图像到Redis
+        await saveTaskImage(taskId, imageData);
         
         // 更新任务状态为已完成
-        saveTaskStatus(taskId, {
+        await saveTaskStatus(taskId, {
           status: 'completed',
           startTime: Date.now(),
           token,
-          progress: 100
+          progress: 100,
+          prompt
         });
         
         console.log(`[Task ${taskId}] Task status updated to completed`);
@@ -316,9 +226,9 @@ async function processImageAsync(
       // 检查是否是 GPU 配额超限错误
       if (apiError.message && (
           apiError.message.includes("GPU quota exceeded") || 
-          apiError.message.includes("超出免费 GPU 配额")
+          apiError.message.includes("exceed free GPU quota")
         )) {
-        console.log(`[Task ${taskId}] GPU 配额超限，标记 token 并使用原始图像作为备选`);
+        console.log(`[Task ${taskId}] GPU quota exceeded, marking token and using original image as fallback`);
         
         // 标记当前 token 已超限
         tokenManager.markTokenQuotaExceeded(token);
@@ -331,19 +241,20 @@ async function processImageAsync(
         
         if (newToken) {
           // 用新 token 重新启动处理
-          console.log(`[Task ${taskId}] 使用新 token 重试...`);
+          console.log(`[Task ${taskId}] Retrying with new token...`);
           return processImageAsync(taskId, imageFile, prompt, height, width, seed, newToken);
         } else {
           console.log(`[Task ${taskId}] No available tokens, using simulation mode`);
           // All tokens unavailable, use original image as result (simulation mode)
-          saveTaskResult(taskId, originalImageBuffer);
+          await saveTaskImage(taskId, originalImageBuffer);
           
           // 更新任务状态为已完成
-          saveTaskStatus(taskId, {
+          await saveTaskStatus(taskId, {
             status: 'completed',
             startTime: Date.now(),
             token,
-            progress: 100
+            progress: 100,
+            prompt
           });
           
           console.log(`[Task ${taskId}] Using original image as result (simulation mode)`);
@@ -367,17 +278,17 @@ async function processImageAsync(
       errorMessage = "Network connection error. Please check your internet connection.";
     }
     
-    saveTaskStatus(taskId, {
+    await saveTaskStatus(taskId, {
       status: 'failed',
-      error: errorMessage,
       startTime: Date.now(),
       token,
-      progress: 0
+      error: errorMessage,
+      prompt
     });
   }
 }
 
-// 生成唯一任务ID
+// 生成任务ID
 function generateTaskId() {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 } 
