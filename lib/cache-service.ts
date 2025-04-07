@@ -131,15 +131,14 @@ export async function getTaskImage(taskId: string): Promise<ArrayBuffer | null> 
     
     console.log(`Image retrieved for task ${taskId}`);
     
-    // 将Base64转回ArrayBuffer
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
+    // 使用Buffer处理Base64，更可靠的方法
+    const buffer = Buffer.from(base64, 'base64');
     
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    
-    return bytes.buffer;
+    // 返回ArrayBuffer
+    return buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    );
   } catch (error) {
     console.error('Error getting image:', error);
     
@@ -190,6 +189,52 @@ export async function checkCacheServiceHealth(): Promise<boolean> {
     return pong === 'PONG';
   } catch (error) {
     console.error('Redis health check failed:', error);
+    return false;
+  }
+}
+
+/**
+ * 更新任务进度
+ */
+export async function updateTaskProgress(taskId: string, progress: number): Promise<boolean> {
+  try {
+    console.log(`Updating progress for task ${taskId} to ${progress}%`);
+    
+    // 从Redis获取当前任务状态
+    const taskDataStr = await redis.get(`task:${taskId}:status`);
+    if (!taskDataStr) {
+      console.log(`Task ${taskId} not found when updating progress`);
+      return false;
+    }
+    
+    // 解析任务数据
+    const taskData = JSON.parse(taskDataStr);
+    
+    // 更新进度
+    taskData.progress = progress;
+    
+    // 保存回Redis
+    await redis.set(
+      `task:${taskId}:status`, 
+      JSON.stringify(taskData), 
+      'EX', 
+      3600
+    );
+    
+    console.log(`Progress updated for task ${taskId}`);
+    return true;
+  } catch (error) {
+    console.error('Error updating task progress:', error);
+    
+    // 尝试从本地缓存获取并更新
+    if (localCache.has(`task:${taskId}:status`)) {
+      const taskData = localCache.get(`task:${taskId}:status`);
+      taskData.progress = progress;
+      localCache.set(`task:${taskId}:status`, taskData);
+      console.log(`Updated progress for task ${taskId} in local cache`);
+      return true;
+    }
+    
     return false;
   }
 }

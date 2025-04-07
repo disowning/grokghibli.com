@@ -3,15 +3,16 @@
 ## 目录
 1. [快速启动](#快速启动)
 2. [Token系统说明](#token-系统说明)
-3. [用户认证系统配置](#用户认证系统配置)
-4. [隐私与法律文档配置](#隐私与法律文档配置)
-5. [服务器部署](#服务器部署)
+3. [等待提示消息配置](#等待提示消息配置)
+4. [用户认证系统配置](#用户认证系统配置)
+5. [隐私与法律文档配置](#隐私与法律文档配置)
+6. [服务器部署](#服务器部署)
    - [图像处理服务器设置](#图像处理服务器设置)
    - [Redis缓存配置](#redis缓存配置)
    - [MySQL数据库配置](#mysql数据库配置)
    - [Nginx反向代理配置](#nginx反向代理配置)
-6. [Vercel部署](#vercel部署)
-7. [故障排除](#故障排除)
+7. [Vercel部署](#vercel部署)
+8. [故障排除](#故障排除)
 
 ## 快速启动
 
@@ -80,6 +81,72 @@
 
 配置 ADMIN_SECRET 后，可以通过以下 URL 查看所有 token 的使用状态：
 http://localhost:3000/api/token-status?secret=your_admin_secret
+
+## 等待提示消息配置
+
+Grok Ghibli使用动态等待提示消息来提升用户在图像转换过程中的等待体验。这些消息具有吉卜力风格的主题，每隔几秒钟自动轮换显示。
+
+### 自定义等待消息
+
+您可以在 `components/ImageUploader.tsx` 文件中修改等待消息数组来自定义显示的消息：
+
+```typescript
+// 等待消息数组
+const waitingMessages = [
+  "Transforming to Ghibli style...",
+  "Hayao Miyazaki is working on your image...",
+  "Drawing Ghibli magic...",
+  "Totoro is helping with your image...",
+  "Spirited Away world is forming...",
+  "Howl's Moving Castle is on the move...",
+  "Nausicaä of the Valley of the Wind is casting spells...",
+  "Castle in the Sky is floating..."
+];
+```
+
+### 修改轮换间隔
+
+默认情况下，等待消息每4秒钟轮换一次。如果需要调整这个间隔，可以修改 `startMessageRotation` 函数中的轮换时间：
+
+```typescript
+// 开始消息轮换
+const startMessageRotation = () => {
+  // 设置初始等待消息索引
+  setWaitingMessageIndex(Math.floor(Math.random() * waitingMessages.length));
+  
+  // 每4秒随机切换一条等待消息
+  const interval = setInterval(() => {
+    setWaitingMessageIndex(Math.floor(Math.random() * waitingMessages.length));
+  }, 4000); // 这里可以修改间隔时间（毫秒）
+  
+  messageIntervalRef.current = interval;
+};
+```
+
+### 多语言支持
+
+如果您的应用需要支持多种语言，可以根据用户选择的语言显示不同语言版本的等待消息：
+
+```typescript
+// 多语言等待消息示例
+const waitingMessagesMultiLingual = {
+  en: [
+    "Transforming to Ghibli style...",
+    "Hayao Miyazaki is working on your image...",
+    // 其他英文消息
+  ],
+  zh: [
+    "正在转换为吉卜力风格...",
+    "宫崎骏大师正在作画中...",
+    // 其他中文消息
+  ],
+  // 其他语言
+};
+
+// 然后根据用户语言选择相应的消息数组
+const currentLanguage = "en"; // 或从用户设置中获取
+const waitingMessages = waitingMessagesMultiLingual[currentLanguage];
+```
 
 ## 用户认证系统配置
 

@@ -9,6 +9,16 @@ import { AlertCircle } from 'lucide-react';
 export default function AuthErrorPage() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const errorDescription = searchParams.get('error_description');
+  
+  // 显示所有查询参数，帮助调试
+  const debugInfo = () => {
+    let info = '';
+    searchParams.forEach((value, key) => {
+      info += `${key}: ${value}\n`;
+    });
+    return info;
+  };
   
   // 根据错误类型显示不同信息
   const getErrorMessage = () => {
@@ -31,6 +41,8 @@ export default function AuthErrorPage() {
         return '登录失败。请检查您提供的信息是否正确。';
       case 'SessionRequired':
         return '访问此页面需要登录。';
+      case 'google':
+        return '谷歌登录失败，请确认谷歌帐号可正常访问。';
       default:
         return '发生了意外错误。请稍后再试。';
     }
@@ -70,7 +82,22 @@ export default function AuthErrorPage() {
             <p className="text-ghibli-dark/70 mt-3">{getErrorMessage()}</p>
           </div>
           
-          <div className="flex flex-col space-y-4">
+          <div className="mt-6 bg-gray-50 p-4 rounded-lg text-sm text-gray-600">
+            <h2 className="font-semibold mb-2">错误详情</h2>
+            <p>错误类型: {error || '未知'}</p>
+            {errorDescription && <p>错误描述: {errorDescription}</p>}
+            
+            <div className="mt-3">
+              <details>
+                <summary className="cursor-pointer font-medium">调试信息</summary>
+                <pre className="mt-2 p-2 bg-gray-100 overflow-auto rounded text-xs">
+                  {debugInfo()}
+                </pre>
+              </details>
+            </div>
+          </div>
+          
+          <div className="flex flex-col space-y-4 mt-6">
             <Button asChild>
               <Link href="/auth/signin">
                 重新尝试登录

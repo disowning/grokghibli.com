@@ -34,30 +34,42 @@ const logDebug = (message: string, data?: any) => {
   console.log(`[Debug] ${message}`, data || '');
 };
 
+// 添加等待消息数组
+const waitingMessages = [
+  "Transforming to Ghibli style...",
+  "Hayao Miyazaki is working on your image...",
+  "Drawing Ghibli magic...",
+  "Totoro is helping with your image...",
+  "Spirited Away world is forming...",
+  "Howl's Moving Castle is on the move...",
+  "Nausicaä of the Valley of the Wind is casting spells...",
+  "Castle in the Sky is floating..."
+];
+
 export default function ImageUploader() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
   const [transformedImage, setTransformedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [waitingMessageIndex, setWaitingMessageIndex] = useState(0);
   const [seed, setSeed] = useState<number>(42);
   const [prompt, setPrompt] = useState<string>("Ghibli Studio style, Charming hand-drawn anime-style illustration");
   const [sampleImage, setSampleImage] = useState<string | null>(null);
+  const messageIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Clear progress interval
-  const clearProgressInterval = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
+  // 清除消息轮换间隔
+  const clearMessageInterval = () => {
+    if (messageIntervalRef.current) {
+      clearInterval(messageIntervalRef.current);
+      messageIntervalRef.current = null;
     }
   };
 
-  // Cleanup on unmount
+  // 清理函数
   useEffect(() => {
     return () => {
-      clearProgressInterval();
+      clearMessageInterval();
       if (originalImage && originalImage.startsWith('blob:')) {
         URL.revokeObjectURL(originalImage);
       }
@@ -67,19 +79,17 @@ export default function ImageUploader() {
     };
   }, [originalImage, transformedImage]);
 
-  // Simulate progress
-  const startProgressSimulation = () => {
-    setProgress(0);
+  // 开始消息轮换
+  const startMessageRotation = () => {
+    // 设置初始等待消息索引
+    setWaitingMessageIndex(Math.floor(Math.random() * waitingMessages.length));
+    
+    // 每4秒随机切换一条等待消息
     const interval = setInterval(() => {
-      setProgress((prevProgress) => {
-        if (prevProgress >= 95) {
-          clearInterval(interval);
-          return prevProgress;
-        }
-        return prevProgress + Math.floor(Math.random() * 5) + 1;
-      });
-    }, 800);
-    progressIntervalRef.current = interval;
+      setWaitingMessageIndex(Math.floor(Math.random() * waitingMessages.length));
+    }, 4000);
+    
+    messageIntervalRef.current = interval;
   };
 
   // Handle image upload
@@ -118,7 +128,8 @@ export default function ImageUploader() {
       logDebug('Starting image generation');
       setError(null);
       setIsLoading(true);
-      setProgress(0);
+      // 启动等待消息轮换
+      startMessageRotation();
       
       // 创建form data
       const formData = new FormData();
@@ -189,7 +200,7 @@ export default function ImageUploader() {
       // 开始轮询
       const checkStatus = async () => {
         if (pollCount >= maxPolls) {
-          clearProgressInterval();
+          clearMessageInterval();
           logDebug('轮询次数超过最大限制');
           setError("Processing took too long. Please try again.");
           setIsLoading(false);
@@ -211,32 +222,41 @@ export default function ImageUploader() {
           // 如果收到图片类型的响应，说明图片处理完成
           if (contentType && contentType.includes('image')) {
             logDebug('Received image response');
-            clearProgressInterval();
-            setProgress(100);
+            clearMessageInterval();
             
-            // 获取图片数据
-            const imageBlob = await response.blob();
-            
-            logDebug('Creating Blob', {
-              type: imageBlob.type,
-              size: imageBlob.size
-            });
-            
-            const transformedImageUrl = URL.createObjectURL(imageBlob);
-            logDebug("Created image URL:", transformedImageUrl);
-            
-            // 确保URL创建后立即设置到状态
-            setTransformedImage(transformedImageUrl);
-            setIsLoading(false);
-            
-            // 验证图片URL
             try {
+              // 获取图片数据
+              const imageBlob = await response.blob();
+              
+              logDebug('Creating Blob', {
+                type: contentType,
+                size: imageBlob.size
+              });
+              
+              // 强制设置类型为image/webp以确保正确识别
+              const fixedBlob = new Blob([await imageBlob.arrayBuffer()], { 
+                type: contentType.includes('webp') ? 'image/webp' : 'image/png' 
+              });
+              
+              const transformedImageUrl = URL.createObjectURL(fixedBlob);
+              logDebug("Created image URL:", transformedImageUrl);
+              
+              // 确保URL创建后立即设置到状态
+              setTransformedImage(transformedImageUrl);
+              setIsLoading(false);
+              
+              // 验证图片URL
               const img = document.createElement('img');
               img.onload = () => logDebug('Image loaded successfully', { width: img.width, height: img.height });
-              img.onerror = (e) => logDebug('Image failed to load', e);
+              img.onerror = (e) => {
+                logDebug('Image failed to load', e);
+                setError("Error displaying the transformed image");
+              };
               img.src = transformedImageUrl;
             } catch (imgErr) {
-              logDebug('Error validating image URL', imgErr);
+              logDebug('Error processing image', imgErr);
+              setError("Error processing the transformed image");
+              setIsLoading(false);
             }
             
             return;
@@ -256,18 +276,24 @@ export default function ImageUploader() {
           const status = data.status;
           
           if (status === 'processing') {
-            // 更新进度
-            const progress = data.progress || Math.min(95, Math.floor(pollCount / maxPolls * 100));
-            setProgress(progress);
+            // 优先使用服务器返回的进度，如果没有则使用本地计算的进度值
+            const serverProgress = typeof data.progress === 'number' ? data.progress : null;
+            const calculatedProgress = Math.min(95, Math.floor(pollCount / maxPolls * 100));
+            const progress = serverProgress !== null ? serverProgress : calculatedProgress;
             
-            logDebug(`Processing, progress: ${progress}%, elapsed time: ${data.elapsedTime || 0} seconds`);
+            logDebug(`Processing, elapsed time: ${data.elapsedTime || 0} seconds`);
             
-            // 继续轮询
+            // 继续轮询，根据轮询次数调整轮询间隔
+            if (pollCount > 10) {
+              pollInterval = 1000; // 轮询次数大于10次时，每1秒轮询一次
+            } else {
+              // 基础轮询间隔
+              pollInterval = 2000;
+            }
+            
             setTimeout(checkStatus, pollInterval);
-            // 逐渐增加轮询间隔
-            pollInterval = Math.min(pollInterval * 1.5, 5000);
           } else if (status === 'failed') {
-            clearProgressInterval();
+            clearMessageInterval();
             logDebug('Processing failed', data.error);
             setError(data.error || "Failed to process image");
             setIsLoading(false);
@@ -288,7 +314,7 @@ export default function ImageUploader() {
       setTimeout(checkStatus, 2000);
     } catch (err: any) {
       logDebug('Error during polling', err);
-      clearProgressInterval();
+      clearMessageInterval();
       setError(err.message || 'Error polling for results');
       setIsLoading(false);
     }
@@ -312,7 +338,7 @@ export default function ImageUploader() {
     setTransformedImage(null);
     setSampleImage(null);
     setError(null);
-    setProgress(0);
+    clearMessageInterval();
   };
 
   // 处理选择示例图片
@@ -389,7 +415,7 @@ export default function ImageUploader() {
               ) : isLoading ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                  <p className="mt-4 text-sm text-gray-500">Transforming... {progress}%</p>
+                  <p className="mt-4 text-sm text-gray-500">{waitingMessages[waitingMessageIndex]}</p>
                 </div>
               ) : sampleImage ? (
                 <div className="relative w-full h-full flex items-center justify-center">

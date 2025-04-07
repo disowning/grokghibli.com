@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
         width,
         seed,
         token: usedToken,
-        imageBase64
+        imageBase64,
+        progressEndpoint: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://grokghibli.com'}/api/transform-ghibli/progress/${taskId}`
       })
     }).catch(err => console.error('Failed to start processing:', err));
     

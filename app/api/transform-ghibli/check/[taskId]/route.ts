@@ -33,10 +33,13 @@ export async function GET(
       
       console.log(`[Check API] Successfully got image for ${taskId}, returning image data`);
       
+      // 将ArrayBuffer转换为Uint8Array
+      const uint8Array = new Uint8Array(imageData);
+      
       // 返回图片并设置正确的content-type
-      return new NextResponse(imageData, {
+      return new NextResponse(uint8Array, {
         headers: {
-          'Content-Type': 'image/webp',
+          'Content-Type': 'image/webp', // 或 'image/png'，取决于实际格式
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
@@ -54,11 +57,11 @@ export async function GET(
     }
 
     // 任务正在处理中，返回状态
-    console.log(`[Check API] Task in progress: ${taskId}, status: ${task.status}, progress: ${task.progress}`);
+    console.log(`[Check API] Task in progress: ${taskId}, status: ${task.status}, progress: ${task.progress || 0}`);
     return NextResponse.json({
       status: task.status,
-      progress: task.progress || 0,
-      elapsedTime: Date.now() - task.startTime
+      progress: task.progress !== undefined ? task.progress : 0,
+      elapsedTime: Math.floor((Date.now() - task.startTime) / 1000) // 转换为秒
     });
   } catch (error: any) {
     console.error(`[Check API] Error checking task ${params.taskId}:`, error);

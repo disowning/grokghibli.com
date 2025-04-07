@@ -1,50 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useSession, signIn, signOut } from 'next-auth/react';
-import { LogIn, LogOut, User } from 'lucide-react';
-
-// 为session.user添加类型定义
-interface CustomUser {
-  id?: string;
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-  credits?: number;
-  credits_reset_at?: string;
-}
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { data: session, status } = useSession();
-  const [mounted, setMounted] = useState(false);
-  
-  // 避免水合不匹配
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  
-  // 获取用户信息
-  useEffect(() => {
-    if (session?.user?.email && mounted) {
-      fetch('/api/user')
-        .then(res => res.json())
-        .then(data => {
-          if (!data.error) {
-            // 更新会话中的用户信息
-            if (session.user) {
-              (session.user as CustomUser).credits = data.monthlyCredits;
-              (session.user as CustomUser).credits_reset_at = data.creditsResetAt;
-            }
-          }
-        })
-        .catch(err => console.error('获取用户信息失败:', err));
-    }
-  }, [session, mounted]);
   
   return (
     <header className="bg-gradient-to-r from-white via-ghibli-light/10 to-white border-b border-ghibli-light sticky top-0 z-50 backdrop-blur-sm shadow-sm">
@@ -77,39 +39,6 @@ export default function Header() {
             <NavLink href="/pricing">Pricing</NavLink>
             <NavLink href="/blog">Blog</NavLink>
             <NavLink href="/contact">Contact</NavLink>
-            
-            {mounted && status === 'authenticated' && session?.user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center px-3 py-1 bg-ghibli-light/50 rounded-full">
-                  <div className="mr-2">
-                    <User size={16} className="text-ghibli-primary" />
-                  </div>
-                  <span className="text-sm font-medium truncate max-w-[80px]">
-                    {session.user.name || session.user.email?.split('@')[0]}
-                  </span>
-                  <span className="ml-2 text-xs bg-ghibli-primary/20 rounded-full px-2 py-0.5 text-ghibli-primary font-medium">
-                    {(session.user as CustomUser).credits || 0} 点数
-                  </span>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => signOut()}
-                  className="flex items-center gap-1"
-                >
-                  <LogOut size={16} />
-                  <span className="ml-1">退出</span>
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                onClick={() => signIn('google')} 
-                className="ml-4 flex items-center gap-1 bg-gradient-to-r from-ghibli-primary to-ghibli-secondary hover:from-ghibli-secondary hover:to-ghibli-primary transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-              >
-                <LogIn size={16} />
-                <span className="ml-1">登录</span>
-              </Button>
-            )}
           </div>
 
           {/* Mobile menu button */}
@@ -154,42 +83,6 @@ export default function Header() {
             <MobileNavLink href="/pricing" onClick={() => setIsMenuOpen(false)}>Pricing</MobileNavLink>
             <MobileNavLink href="/blog" onClick={() => setIsMenuOpen(false)}>Blog</MobileNavLink>
             <MobileNavLink href="/contact" onClick={() => setIsMenuOpen(false)}>Contact</MobileNavLink>
-            
-            {mounted && status === 'authenticated' && session?.user ? (
-              <>
-                <div className="pt-2 px-3">
-                  <div className="flex items-center py-2 px-3 bg-ghibli-light/50 rounded-md mb-2">
-                    <User size={16} className="text-ghibli-primary mr-2" />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">
-                        {session.user.name || session.user.email?.split('@')[0]}
-                      </span>
-                      <span className="text-xs text-ghibli-primary">
-                        {(session.user as CustomUser).credits || 0} 点数
-                      </span>
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={() => signOut()} 
-                    variant="outline"
-                    className="w-full flex items-center justify-center gap-1"
-                  >
-                    <LogOut size={16} />
-                    <span className="ml-1">退出登录</span>
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="pt-2">
-                <Button 
-                  onClick={() => signIn('google')} 
-                  className="w-full bg-gradient-to-r from-ghibli-primary to-ghibli-secondary hover:from-ghibli-secondary hover:to-ghibli-primary transition-all duration-300 shadow-md flex items-center justify-center gap-1"
-                >
-                  <LogIn size={16} />
-                  <span className="ml-1">登录 / 注册</span>
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </div>

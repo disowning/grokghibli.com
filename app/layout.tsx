@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import { Inter, Playfair_Display } from 'next/font/google'
 import Header from '@/components/Header'
 import Script from 'next/script'
-import Providers from './providers'
 import Footer from './components/Footer'
 import { Analytics } from '@vercel/analytics/react'
 
@@ -64,22 +63,20 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${playfairDisplay.variable} min-h-screen flex flex-col`}>
       <body className="font-sans antialiased bg-slate-50 text-ghibli-dark">
-        <Providers>
-          <Header />
-          <main className="flex-grow">
-            {children}
-          </main>
-          <Footer />
-          <Script src="https://www.googletagmanager.com/gtag/js?id=G-QWERT12345" />
-          <Script id="google-analytics">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-QWERT12345');
-            `}
-          </Script>
-        </Providers>
+        <Header />
+        <main className="flex-grow">
+          {children}
+        </main>
+        <Footer />
+        <Script src="https://www.googletagmanager.com/gtag/js?id=G-QWERT12345" />
+        <Script id="google-analytics">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-QWERT12345');
+          `}
+        </Script>
         <Analytics />
       </body>
     </html>
