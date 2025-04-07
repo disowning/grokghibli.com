@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     // 发送请求到处理服务器
     console.log(`Sending processing request to external server for task ${taskId}`);
     
-    fetch('https://api.grokghibli.com/process/' + taskId, {
+    fetch(`https://${process.env.API_SERVER || 'api.grokghibli.com'}/process/${taskId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

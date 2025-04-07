@@ -4,8 +4,8 @@ import { Redis } from 'ioredis';
 
 // 创建Redis客户端实例
 const redis = new Redis({
-  host: process.env.REDIS_HOST || '207.211.179.194',
-  port: Number(process.env.REDIS_PORT) || 6379,
+  host: process.env.REDIS_HOST || 'api-ip.grokghibli.com',
+  // 无需指定端口，因为域名已经通过反向代理指向正确的端口
   password: process.env.REDIS_PASSWORD || 'redis_akyGdb'
 });
 
