@@ -18,6 +18,7 @@ export type ProcessingTask = {
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
+  let taskId: string | null = null;
   
   try {
     const imageFile = formData.get('image') as File;
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
     const seed = Number(formData.get('seed')) || 42;
     
     if (!imageFile) {
+      console.error('No image file provided in request');
       return NextResponse.json(
         { error: 'No image file provided' },
         { status: 400 }
@@ -45,7 +47,8 @@ export async function POST(request: NextRequest) {
     }
     
     // 创建任务ID
-    const taskId = generateTaskId();
+    taskId = generateTaskId();
+    console.log(`Created task ID: ${taskId}`);
     
     // 记录任务开始
     const taskData = {
@@ -57,33 +60,85 @@ export async function POST(request: NextRequest) {
     };
     
     // 保存任务状态到Redis
+    console.log(`Saving initial task status to Redis for task ${taskId}`);
     await saveTaskStatus(taskId, taskData);
     
     // 记录 token 使用开始
     tokenManager.startUsingToken(usedToken);
     
     // 将图像转为Base64
+    console.log(`Converting image to Base64 for task ${taskId}`);
     const imageBuffer = await imageFile.arrayBuffer();
     const imageBase64 = Buffer.from(new Uint8Array(imageBuffer)).toString('base64');
     
-    // 发送请求到处理服务器
-    console.log(`Sending processing request to external server for task ${taskId}`);
+    // 构建处理服务器URL
+    const apiServer = process.env.API_SERVER || 'api.grokghibli.com';
+    const processingUrl = `https://${apiServer}/process/${taskId}`;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://grokghibli.com';
+    const progressEndpoint = `${baseUrl}/api/transform-ghibli/progress/${taskId}`;
     
-    fetch(`https://${process.env.API_SERVER || 'api.grokghibli.com'}/process/${taskId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        prompt,
-        height,
-        width,
-        seed,
-        token: usedToken,
-        imageBase64,
-        progressEndpoint: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://grokghibli.com'}/api/transform-ghibli/progress/${taskId}`
-      })
-    }).catch(err => console.error('Failed to start processing:', err));
+    console.log(`Task ${taskId} configuration:`, {
+      apiServer,
+      baseUrl,
+      imageSize: imageBuffer.byteLength,
+      prompt,
+      height,
+      width,
+      seed
+    });
+    
+    // 发送请求到处理服务器
+    console.log(`Sending processing request to ${processingUrl}`);
+    
+    try {
+      const response = await fetch(processingUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt,
+          height,
+          width,
+          seed,
+          token: usedToken,
+          imageBase64,
+          progressEndpoint
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Processing server returned error for task ${taskId}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        
+        // 更新任务状态为失败
+        await saveTaskStatus(taskId, {
+          ...taskData,
+          status: 'failed',
+          error: `Processing server error: ${response.status} ${response.statusText}`
+        });
+        
+        throw new Error(`Processing server returned ${response.status}: ${errorText}`);
+      }
+      
+      console.log(`Successfully initiated processing for task ${taskId}`);
+      
+    } catch (processingError: any) {
+      console.error(`Error sending request to processing server for task ${taskId}:`, processingError);
+      
+      // 更新任务状态为失败
+      await saveTaskStatus(taskId, {
+        ...taskData,
+        status: 'failed',
+        error: processingError.message || 'Failed to contact processing server'
+      });
+      
+      throw processingError;
+    }
     
     // 立即返回任务ID
     return NextResponse.json({ 
@@ -93,7 +148,7 @@ export async function POST(request: NextRequest) {
     });
     
   } catch (error: any) {
-    console.error('Error starting image processing:', error);
+    console.error(`Error processing request${taskId ? ` for task ${taskId}` : ''}:`, error);
     
     return NextResponse.json(
       { error: error.message || 'Failed to start image processing' },
