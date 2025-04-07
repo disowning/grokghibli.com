@@ -4,7 +4,7 @@ Grok Ghibli是一个使用AI技术和Next.js 14将您的照片转换为吉卜力
 
 ![Grok Ghibli Preview](/images/showcase/showcase-after.webp)
 
-## 特点...
+## 特点.....
 
 - **AI驱动转换**：利用先进的AI模型进行准确的吉卜力风格转换
 - **异步处理系统**：在后台处理图像转换，无超时问题
