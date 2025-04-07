@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTaskStatus, getTaskImage, deleteTask } from '@/lib/cache-service';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { taskId: string } }
-) {
+// 添加一个通用的检查任务状态函数
+async function checkTaskStatus(taskId: string) {
   try {
-    const taskId = params.taskId;
     console.log(`[Check API] Checking task: ${taskId}`);
 
     // 从Redis获取任务状态
@@ -64,10 +61,26 @@ export async function GET(
       elapsedTime: Math.floor((Date.now() - task.startTime) / 1000) // 转换为秒
     });
   } catch (error: any) {
-    console.error(`[Check API] Error checking task ${params.taskId}:`, error);
+    console.error(`[Check API] Error checking task ${taskId}:`, error);
     return NextResponse.json(
       { error: error.message || 'Error checking task status' },
       { status: 500 }
     );
   }
+}
+
+// GET方法处理
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { taskId: string } }
+) {
+  return checkTaskStatus(params.taskId);
+}
+
+// POST方法处理
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { taskId: string } }
+) {
+  return checkTaskStatus(params.taskId);
 }
