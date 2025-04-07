@@ -869,6 +869,217 @@ CREATE TABLE IF NOT EXISTS users (
 
 这种混合架构解决了Vercel Serverless函数的60秒超时限制问题，同时保持了前端的高性能和可扩展性。
 
+## 进度显示功能配置
+
+Grok Ghibli的进度显示功能需要正确配置才能正常工作。以下是配置步骤：
+
+### 1. 环境变量配置
+
+在`.env.local`文件中添加以下配置：
+
+```bash
+# 进度显示配置
+PROGRESS_UPDATE_INTERVAL=2000  # 进度更新间隔（毫秒）
+MAX_RETRY_ATTEMPTS=3          # 最大重试次数
+RETRY_DELAY=1000             # 重试延迟（毫秒）
+```
+
+### 2. Redis配置
+
+确保Redis服务器正确配置了以下设置：
+
+```bash
+# Redis配置
+maxmemory 1gb
+maxmemory-policy allkeys-lru
+```
+
+### 3. 进度更新API配置
+
+在图像处理服务器上配置进度更新API：
+
+```javascript
+// server.js
+app.post('/progress/:taskId', async (req, res) => {
+  const { taskId } = req.params;
+  const { progress, status } = req.body;
+  
+  // 更新Redis中的进度
+  await redis.set(
+    `task:${taskId}:status`,
+    JSON.stringify({
+      status,
+      progress,
+      updatedAt: Date.now()
+    }),
+    'EX',
+    3600
+  );
+  
+  res.json({ success: true });
+});
+```
+
+## 错误处理系统配置
+
+### 1. 错误日志配置
+
+配置错误日志系统：
+
+```bash
+# 创建日志目录
+mkdir -p /var/log/grokghibli
+
+# 设置日志权限
+chown -R node:node /var/log/grokghibli
+```
+
+### 2. 错误监控配置
+
+配置错误监控系统：
+
+```javascript
+// lib/error-handler.ts
+export const errorHandler = {
+  logError: async (error: Error, context: string) => {
+    // 记录错误到日志文件
+    await fs.appendFile(
+      '/var/log/grokghibli/errors.log',
+      `${new Date().toISOString()} [${context}] ${error.message}\n`
+    );
+    
+    // 发送错误通知
+    if (process.env.NODE_ENV === 'production') {
+      await sendErrorNotification(error, context);
+    }
+  }
+};
+```
+
+### 3. 自动重试配置
+
+配置自动重试机制：
+
+```javascript
+// lib/retry-handler.ts
+export const retryHandler = {
+  async retry<T>(
+    operation: () => Promise<T>,
+    maxAttempts: number = 3,
+    delay: number = 1000
+  ): Promise<T> {
+    let lastError: Error;
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        }
+      }
+    }
+    
+    throw lastError;
+  }
+};
+```
+
+### 4. 优雅降级配置
+
+配置优雅降级处理：
+
+```javascript
+// lib/fallback-handler.ts
+export const fallbackHandler = {
+  async handleFallback<T>(
+    primaryOperation: () => Promise<T>,
+    fallbackOperation: () => Promise<T>
+  ): Promise<T> {
+    try {
+      return await primaryOperation();
+    } catch (error) {
+      console.error('Primary operation failed, using fallback:', error);
+      return await fallbackOperation();
+    }
+  }
+};
+```
+
+## 性能优化配置
+
+### 1. 前端优化配置
+
+配置Next.js优化：
+
+```javascript
+// next.config.js
+module.exports = {
+  images: {
+    domains: ['api.grokghibli.com'],
+    formats: ['image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+  },
+  experimental: {
+    optimizeCss: true,
+    scrollRestoration: true,
+  },
+};
+```
+
+### 2. 后端优化配置
+
+配置Redis缓存：
+
+```javascript
+// lib/cache-service.ts
+const redis = new Redis({
+  host: process.env.REDIS_HOST,
+  port: parseInt(process.env.REDIS_PORT),
+  password: process.env.REDIS_PASSWORD,
+  retryStrategy: (times) => {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  },
+  maxRetriesPerRequest: 3,
+});
+```
+
+### 3. 数据库优化配置
+
+配置MySQL连接池：
+
+```javascript
+// lib/database.ts
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
+  connectionLimit: 10,
+  queueLimit: 0,
+  waitForConnections: true,
+});
+```
+
+### 4. CDN配置
+
+配置CDN集成：
+
+```nginx
+# nginx.conf
+server {
+    location /static/ {
+        proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504;
+        proxy_cache_valid 200 60m;
+        proxy_cache_valid 404 1m;
+        add_header X-Cache-Status $upstream_cache_status;
+    }
+}
+```
+
 ## 故障排除
 
 ### 认证问题
