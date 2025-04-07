@@ -6,7 +6,7 @@ import Pricing from '@/components/Pricing'
 import { Button } from '@/components/ui/button'
 
 export const metadata = {
-  title: 'Grok Ghibli - Transform Photos into Studio Ghibli Artwork with AI',
+  title: ' Free Ghibli style AI image generator ',
   description: 'Use Grok Ghibli to transform your photos into stunning Studio Ghibli style artwork in 2025. Powered by xAI\'s latest Grok technology, create magical Ghibli transformations in seconds. Last updated: April 3, 2025.',
   keywords: [
     'grok ghibli', 
